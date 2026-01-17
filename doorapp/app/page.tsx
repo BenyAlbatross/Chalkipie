@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import LiftShaft from '@/components/LiftShaft';
 import FloorRow from '@/components/FloorRow';
-import DoorModal from '@/components/DoorModal';
+import DoorFocusView from '@/components/DoorFocusView';
 import FloorPickerModal from '@/components/FloorPickerModal';
 import AcademicTermSelector from '@/components/AcademicTermSelector';
 import { 
@@ -18,6 +18,12 @@ export default function Home() {
   const [selectedTerm, setSelectedTerm] = useState<AcademicTerm | null>(null);
   const [doors, setDoors] = useState<Door[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Door interaction state
+  const [selectedDoor, setSelectedDoor] = useState<Door | null>(null);
+  
+  // Door element refs for positioning focus view
+  const doorElementRefs = useRef<{ [doorId: string]: HTMLButtonElement | null }>({});
 
   // Fetch terms on mount
   useEffect(() => {
@@ -97,7 +103,10 @@ export default function Home() {
     return doorsMap;
   }, [doors, availableFloors]);
 
-  const [selectedDoor, setSelectedDoor] = useState<Door | null>(null);
+  // Door ref callback
+  const handleDoorRef = (doorId: string, el: HTMLButtonElement | null) => {
+    doorElementRefs.current[doorId] = el;
+  };
 
   const handleTermChange = (term: AcademicTerm) => {
     if (selectedTerm?.academicYear === term.academicYear && selectedTerm?.semester === term.semester) return;
@@ -143,6 +152,43 @@ export default function Home() {
 
   const handleCloseModal = () => {
     setSelectedDoor(null);
+  };
+  
+  // Door navigation in zoom view
+  const handleNavigateToPreviousDoor = () => {
+    if (!selectedDoor || !selectedFloor) return;
+    
+    const currentFloorDoors = doorsByFloor[selectedFloor] || [];
+    const currentIndex = currentFloorDoors.findIndex(d => d.id === selectedDoor.id);
+    
+    if (currentIndex > 0) {
+      setSelectedDoor(currentFloorDoors[currentIndex - 1]);
+    }
+  };
+  
+  const handleNavigateToNextDoor = () => {
+    if (!selectedDoor || !selectedFloor) return;
+    
+    const currentFloorDoors = doorsByFloor[selectedFloor] || [];
+    const currentIndex = currentFloorDoors.findIndex(d => d.id === selectedDoor.id);
+    
+    if (currentIndex >= 0 && currentIndex < currentFloorDoors.length - 1) {
+      setSelectedDoor(currentFloorDoors[currentIndex + 1]);
+    }
+  };
+  
+  const hasPreviousDoor = () => {
+    if (!selectedDoor || !selectedFloor) return false;
+    const currentFloorDoors = doorsByFloor[selectedFloor] || [];
+    const currentIndex = currentFloorDoors.findIndex(d => d.id === selectedDoor.id);
+    return currentIndex > 0;
+  };
+  
+  const hasNextDoor = () => {
+    if (!selectedDoor || !selectedFloor) return false;
+    const currentFloorDoors = doorsByFloor[selectedFloor] || [];
+    const currentIndex = currentFloorDoors.findIndex(d => d.id === selectedDoor.id);
+    return currentIndex >= 0 && currentIndex < currentFloorDoors.length - 1;
   };
 
   if (!selectedTerm && isLoading) {
@@ -191,7 +237,7 @@ export default function Home() {
                     onFloorChange={handleFloorSelect}
                     isLiftMoving={isLiftMoving}
                   />
-
+                  
                   {/* Spacer to match lift shaft header height */}
                   <div className="bg-white border-b-2 border-black" style={{ height: '70px' }}></div>
                   
@@ -253,11 +299,16 @@ export default function Home() {
         />
       )}
 
-      {/* Door modal overlay */}
+      {/* Door Focus View - In-place zoom with action buttons */}
       {selectedDoor && (
-        <DoorModal 
+        <DoorFocusView 
           door={selectedDoor}
+          doorElement={doorElementRefs.current[selectedDoor.id] || null}
           onClose={handleCloseModal}
+          onPrevious={handleNavigateToPreviousDoor}
+          onNext={handleNavigateToNextDoor}
+          hasPrevious={hasPreviousDoor()}
+          hasNext={hasNextDoor()}
         />
       )}
     </div>

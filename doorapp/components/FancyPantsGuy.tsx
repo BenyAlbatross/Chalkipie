@@ -41,6 +41,10 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
     lastFloorChangeTime: 0,
     isRiding: false, 
     visible: true,
+    previousFloor: -1,
+    lastScrollUpdate: 0,
+    smoothScrollY: 0,
+    smoothScrollX: 0,
     liftStartY: 0,
     liftTargetY: 0,
     liftStartTime: 0,
@@ -352,6 +356,8 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
           }
       }
       
+      // Proximity detection removed - doors now open via direct click
+      
       // RENDER
       if (characterRef.current) {
         characterRef.current.style.transform = `translate(${s.x}px, ${s.y}px)`;
@@ -379,17 +385,6 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
                 // The physics loop runs ~60fps, window.scrollTo 'auto' is instant.
                 // This should match the frame.
                 window.scrollTo({ top: targetScrollY, behavior: 'auto' });
-            }
-        }
-        
-        const container = characterRef.current.closest('.hotel-facade');
-        if (container) {
-            const containerWidth = container.clientWidth;
-            const targetScrollX = s.x - (containerWidth / 2) + (CHARACTER_WIDTH / 2);
-            if (targetScrollX > 0 && Math.abs(container.scrollLeft - targetScrollX) > 5) {
-                container.scrollLeft += (targetScrollX - container.scrollLeft) * 0.1;
-            } else if (targetScrollX <= 0) {
-                container.scrollLeft = 0;
             }
         }
 

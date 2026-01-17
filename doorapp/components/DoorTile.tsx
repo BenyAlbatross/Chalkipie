@@ -28,8 +28,9 @@ const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
         </div>
 
         <button
+          ref={doorRef}
           onClick={() => onClick(door)}
-          className="door-tile group relative flex-shrink-0 focus:outline-none"
+          className="door-tile group relative flex-shrink-0 focus:outline-none transition-all duration-300 hover:scale-105"
           style={{
             width: '160px',
             height: '280px',
@@ -101,6 +102,4 @@ const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
       </div>
     </div>
   );
-});
-
-export default DoorTile;
+}
