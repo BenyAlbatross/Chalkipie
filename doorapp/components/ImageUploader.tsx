@@ -2,12 +2,13 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { useDoorState } from '@/contexts/DoorStateContext';
 
 interface ImageUploaderProps {
   doorId?: string;
   initialSemester?: number;
   academicYear?: string;
-  onUploadSuccess?: (url: string) => void;
+  onUploadSuccess?: (chalkImageUrl: string) => void;
 }
 
 export default function ImageUploader({ 
@@ -23,17 +24,19 @@ export default function ImageUploader({
   const [errorMessage, setErrorMessage] = useState('');
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   
+  const { extractDoor } = useDoorState();
+  
   // Metadata state
   const [style, setStyle] = useState('normal');
   const [semester, setSemester] = useState(String(initialSemester));
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to format semester like 252620
+  // Helper to format semester like 252610 (AY 25/26 Sem 1)
   const formatSemesterCode = (ay: string, sem: string) => {
     // ay: "25/26" -> "2526"
     const years = ay.replace('/', '');
-    // sem: "2" -> "20"
+    // sem: "1" -> "10", sem: "2" -> "20"
     return `${years}${sem}0`;
   };
 
@@ -55,30 +58,20 @@ export default function ImageUploader({
     setUploadStatus('idle');
     setErrorMessage('');
 
-    const formData = new FormData();
-    formData.append('image', selectedImage);
-    formData.append('style', style);
-    formData.append('semester', formatSemesterCode(academicYear, semester));
-    formData.append('id', doorId);
-
     try {
-      const response = await fetch('/api/chalk', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Upload failed');
-      }
-
+      // Format semester code (e.g., AY 25/26 Sem 1 -> 252610)
+      const semesterCode = formatSemesterCode(academicYear, semester);
+      
+      // Call the unified /extract endpoint via context
+      await extractDoor(doorId || `upload-${Date.now()}`, selectedImage, semesterCode);
+      
       setUploadStatus('success');
-      setUploadedUrl(data.url);
-      console.log('Upload successful:', data.url);
+      // Note: The actual URL will be in the door state now
+      console.log('Extract successful for door:', doorId);
       
       if (onUploadSuccess) {
-        onUploadSuccess(data.url);
+        // We don't have the URL immediately here, but the state is updated
+        onUploadSuccess('extracted');
       }
     } catch (error) {
       console.error('Upload error:', error);
