@@ -8,9 +8,10 @@ import rough from 'roughjs';
 interface DoorTileProps {
   door: Door;
   onClick: (door: Door) => void;
+  doorRef?: (el: HTMLButtonElement | null) => void;
 }
 
-const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
+export default function DoorTile({ door, onClick, doorRef }: DoorTileProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const doorbellCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -61,8 +62,9 @@ const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
         </div>
 
         <button
+          ref={doorRef}
           onClick={() => onClick(door)}
-          className="door-tile group relative flex-shrink-0 focus:outline-none"
+          className="door-tile group relative flex-shrink-0 focus:outline-none transition-all duration-300 hover:scale-105"
           style={{
             width: '160px',
             height: '280px',

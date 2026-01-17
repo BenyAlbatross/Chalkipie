@@ -10,10 +10,11 @@ interface FloorRowProps {
   doors: Door[];
   onDoorClick: (door: Door) => void;
   isActive?: boolean;
+  onDoorRef?: (doorId: string, el: HTMLButtonElement | null) => void;
 }
 
-const FloorRow = memo(forwardRef<HTMLDivElement, FloorRowProps>(
-  ({ floor, doors, onDoorClick, isActive = false }, ref) => {
+const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
+  ({ floor, doors, onDoorClick, isActive = false, onDoorRef }, ref) => {
     const headerRef = useRef<HTMLDivElement>(null);
     const rowRef = useRef<HTMLDivElement>(null);
     const [isHovered, setIsHovered] = useState(false);
@@ -27,7 +28,8 @@ const FloorRow = memo(forwardRef<HTMLDivElement, FloorRowProps>(
           padding: 12,
         });
         annotation.show();
-        return () => annotation.remove();
+        return () => a
+        nnotation.remove();
       }
     }, [isHovered, isActive]);
 
@@ -59,7 +61,14 @@ const FloorRow = memo(forwardRef<HTMLDivElement, FloorRowProps>(
           {Array.from({ length: 20 }, (_, index) => {
             const door = doors[index];
             if (door) {
-              return <DoorTile key={door.id} door={door} onClick={() => onDoorClick(door)} />;
+              return (
+                <DoorTile 
+                  key={door.id} 
+                  door={door} 
+                  onClick={() => onDoorClick(door)}
+                  doorRef={onDoorRef ? (el: HTMLButtonElement | null) => onDoorRef(door.id, el) : undefined}
+                />
+              );
             } else {
               // Placeholder door
               return (
