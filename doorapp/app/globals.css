@@ -57,6 +57,9 @@ body {
   flex-direction: column;
   box-shadow: 4px 0 8px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 30;
 }
 
 .lift-car {
@@ -235,10 +238,26 @@ body {
   border-radius: 8px;
   background: var(--white);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
 /* Lift shaft inner content that matches total height of all floors */
 .lift-shaft-inner {
   position: relative;
   width: 100%;
+}
+
+/* Ensure sticky positioning works inside flex containers */
+.lift-shaft-container {
+  width: 180px;
+  background: var(--light-gray);
+  border-right: 3px solid var(--black);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 30;
+  align-self: flex-start;
 }

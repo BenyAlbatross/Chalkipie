@@ -73,19 +73,17 @@ export default function Home() {
     // Start viewport scroll immediately with lift animation
     const floorElement = floorRefs.current[clampedFloor];
     if (floorElement) {
-      setTimeout(() => {
-        const floorRect = floorElement.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const absoluteFloorTop = floorRect.top + window.scrollY;
-        
-        // Center the floor in the viewport with slower scroll
-        const targetScrollPosition = absoluteFloorTop - (viewportHeight / 2) + (floorRect.height / 2);
-        
-        window.scrollTo({
-          top: targetScrollPosition,
-          behavior: 'smooth'
-        });
-      }, 100); // Small delay to start scroll with lift movement
+      const floorRect = floorElement.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const absoluteFloorTop = floorRect.top + window.scrollY;
+      
+      // Center the floor in the viewport with slower scroll
+      const targetScrollPosition = absoluteFloorTop - (viewportHeight / 2) + (floorRect.height / 2);
+      
+      window.scrollTo({
+        top: targetScrollPosition,
+        behavior: 'smooth'
+      });
     }
 
     // Complete lift movement
@@ -117,20 +115,8 @@ export default function Home() {
 
       {/* Main content area */}
       <main className="pt-24 min-h-screen">
-        {/* Page header */}
-        <div className="px-8 py-6 mb-8">
-          <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-black mb-4 tracking-tight">
-              🏨 Hotel Sketch
-            </h1>
-            <p className="text-dark-gray text-lg font-medium">
-              {selectedTerm.displayName}
-            </p>
-            <p className="text-gray-600 text-sm mt-2">
-              {availableFloors.length} {availableFloors.length === 1 ? 'Floor' : 'Floors'} · Click any window to view details
-            </p>
-          </div>
-        </div>
+        {/* Whitespace at top */}
+        <div className="py-4"></div>
 
         {/* Hotel facade - lift and doors scroll together */}
         {availableFloors.length > 0 ? (
@@ -149,7 +135,7 @@ export default function Home() {
                 {/* Door grid - scrolls with lift */}
                 <div className="flex-1">
                   {/* Spacer to match lift shaft header height */}
-                  <div className="bg-white border-b-2 border-black" style={{ height: '80px' }}></div>
+                  <div className="bg-white border-b-2 border-black" style={{ height: '70px' }}></div>
                   
                   <div className="flex flex-col-reverse">
                     {availableFloors.map((floor) => (

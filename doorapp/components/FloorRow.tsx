@@ -2,7 +2,8 @@
 
 import { Door } from '@/types/door';
 import DoorTile from './DoorTile';
-import { forwardRef } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
+import { annotate } from 'rough-notation';
 
 interface FloorRowProps {
   floor: number;
@@ -12,11 +13,44 @@ interface FloorRowProps {
 
 const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
   ({ floor, doors, onDoorClick }, ref) => {
+    const headerRef = useRef<HTMLDivElement>(null);
+    const rowRef = useRef<HTMLDivElement>(null);
+    const [isHovered, setIsHovered] = useState(false);
+
+    useEffect(() => {
+      if (headerRef.current && isHovered) {
+        const annotation = annotate(headerRef.current, {
+          type: 'circle',
+          color: '#a8d8ea',
+          strokeWidth: 2,
+          padding: 8,
+        });
+        annotation.show();
+        return () => annotation.remove();
+      }
+    }, [isHovered]);
+
     return (
-      <div ref={ref} className="floor-row">
-        {/* Floor number indicator on left */}
-        <div className="absolute left-4 bottom-4 text-xl font-bold text-dark-gray bg-white/80 px-3 py-1 rounded border-2 border-black">
-          {String(floor).padStart(2, '0')}
+      <div 
+        ref={(el) => {
+          rowRef.current = el;
+          if (typeof ref === 'function') {
+            ref(el);
+          } else if (ref) {
+            ref.current = el;
+          }
+        }}
+        className="floor-row"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Floor header on top-left */}
+        <div 
+          ref={headerRef}
+          className="absolute left-8 top-4 text-2xl font-bold text-black px-4 py-2"
+          style={{ fontFamily: 'Roboto, sans-serif' }}
+        >
+          Level {String(floor).padStart(2, '0')}
         </div>
         
         {/* Doors aligned to bottom with spacing */}

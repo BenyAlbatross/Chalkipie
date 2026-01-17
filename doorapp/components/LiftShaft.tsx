@@ -22,12 +22,12 @@ export default function LiftShaft({
   
   return (
     <div className="lift-shaft-container">
-      {/* Elevator header - sticky at top of shaft */}
-      <div className="bg-light-gray border-b-3 border-black text-black text-center py-4 px-4 sticky top-24 z-10">
-        <div className="text-sm uppercase tracking-wider mb-2 font-medium">Lift</div>
-        <div className="text-2xl">⬍⬍⬍</div>
+      {/* Elevator header - sticky at top of shaft - compact */}
+      <div className="bg-light-gray border-b-3 border-black text-black text-center sticky top-24 z-10" style={{ height: '70px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '8px 12px' }}>
+        <div className="text-xs uppercase tracking-wider font-medium">Lift</div>
+        <div className="text-lg">⬍⬍⬍</div>
         {selectedFloor && (
-          <div className="text-xs font-bold mt-2 text-black">
+          <div className="text-xs font-bold mt-1 text-black">
             Floor {String(selectedFloor).padStart(2, '0')}
           </div>
         )}
