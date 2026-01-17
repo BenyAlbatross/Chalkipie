@@ -1,5 +1,6 @@
-import { supabase } from './supabaseClient';
 import { Door, AcademicTerm } from '@/types/door';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
 
 /**
  * Formats academic year and semester into a code like "252620"
@@ -21,49 +22,75 @@ function parseSemesterCode(code: string): { academicYear: string, semester: numb
   return { academicYear: ay, semester: sem || 1 };
 }
 
+/**
+ * Fetch all scans from backend for a specific semester
+ */
+async function fetchScansForSemester(semesterCode: string): Promise<any[]> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/scans/${semesterCode}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    if (!response.ok) {
+      console.warn(`Failed to fetch scans for semester ${semesterCode}: ${response.status}`);
+      return [];
+    }
+    
+    const data = await response.json();
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching scans from backend:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch a single scan by room_id from backend
+ */
+export async function fetchScanByRoomId(roomId: string): Promise<any | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/scan/${roomId}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      console.warn(`Failed to fetch scan for room ${roomId}: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching scan from backend:', error);
+    return null;
+  }
+}
+
 export async function fetchAvailableTerms(): Promise<AcademicTerm[]> {
   try {
+    // For now, we'll fetch all known semester codes from backend
+    // This is a simplified approach - fetch scans from multiple common semesters
+    const potentialSemesters = ['252610', '252620', '242510', '242520'];
     const termsMap = new Map<string, AcademicTerm>();
 
-    const { data: doorsData } = await supabase
-      .from('doors')
-      .select('academic_year, semester');
-
-    if (doorsData && doorsData.length > 0) {
-      doorsData.forEach((item: any) => {
-        const ay = item.academic_year || item.academicYear;
-        const sem = item.semester;
-        if (ay && sem) {
-          const key = `${ay}-${sem}`;
-          if (!termsMap.has(key)) {
-            termsMap.set(key, {
-              academicYear: ay,
-              semester: sem,
-              displayName: `${ay} Sem ${sem}`,
-            });
-          }
+    for (const semCode of potentialSemesters) {
+      const scans = await fetchScansForSemester(semCode);
+      if (scans.length > 0) {
+        const { academicYear, semester } = parseSemesterCode(semCode);
+        const key = `${academicYear}-${semester}`;
+        if (!termsMap.has(key)) {
+          termsMap.set(key, {
+            academicYear,
+            semester,
+            displayName: `${academicYear} Sem ${semester}`,
+          });
         }
-      });
-    }
-
-    const { data: chalksData } = await supabase
-      .from('door_chalks')
-      .select('semester');
-
-    if (chalksData && chalksData.length > 0) {
-      chalksData.forEach((item: any) => {
-        if (item.semester) {
-          const { academicYear, semester } = parseSemesterCode(item.semester);
-          const key = `${academicYear}-${semester}`;
-          if (!termsMap.has(key)) {
-            termsMap.set(key, {
-              academicYear: academicYear,
-              semester: semester,
-              displayName: `${academicYear} Sem ${semester}`,
-            });
-          }
-        }
-      });
+      }
     }
 
     if (termsMap.size === 0) {
@@ -81,6 +108,7 @@ export async function fetchAvailableTerms(): Promise<AcademicTerm[]> {
       return b.semester - a.semester;
     });
   } catch (err) {
+    console.error('Error fetching available terms:', err);
     return [{
       academicYear: "25/26",
       semester: 1,
@@ -93,35 +121,23 @@ export async function fetchDoorsForTerm(term: AcademicTerm): Promise<Door[]> {
   try {
     const semCode = formatSemesterCode(term.academicYear, term.semester);
 
-    // 1. Fetch chalk art - FETCH ALL to ensure we don't miss anything
-    const { data: chalksData } = await supabase
-        .from('door_chalks')
-        .select('*');
+    // Fetch chalk scans from backend - Source of Truth for images
+    const scans = await fetchScansForSemester(semCode);
 
-    const chalksMap = new Map();
-    if (chalksData) {
-        chalksData.forEach(c => {
-            chalksMap.set(String(c.id), c);
-        });
+    const scansMap = new Map();
+    if (scans) {
+      scans.forEach((s: any) => {
+        // Map by roomId (e.g., "17124")
+        if (s.roomId) {
+          console.log('Scan roomId:', s.roomId, 'chalkImage:', s.chalkImage, 'status:', s.status);
+          scansMap.set(String(s.roomId), s);
+        }
+      });
     }
+    
+    console.log('Total scans loaded:', scansMap.size);
 
-    // 2. Fetch base doors
-    const { data: doorsData } = await supabase
-        .from('doors')
-        .select('*')
-        .eq('academic_year', term.academicYear)
-        .eq('semester', term.semester);
-
-    const dbDoorsMap = new Map();
-    if (doorsData) {
-        doorsData.forEach(d => {
-            const unit = (d.door_number % 1000 || d.doorNumber % 1000 || 0);
-            const doorIdStr = `${d.floor}${100 + unit}`;
-            dbDoorsMap.set(doorIdStr, d);
-        });
-    }
-
-    // 3. Generate FULL GRID (20 floors x 20 rooms)
+    // Generate FULL GRID (20 floors x 20 rooms)
     const allDoors: Door[] = [];
     for (let floor = 1; floor <= 20; floor++) {
       for (let unit = 1; unit <= 20; unit++) {
@@ -129,15 +145,15 @@ export async function fetchDoorsForTerm(term: AcademicTerm): Promise<Door[]> {
         const doorIdStr = `${floor}${unitPart}`;
         const doorNumber = floor * 1000 + unitPart;
         
-        const dbDoor = dbDoorsMap.get(doorIdStr);
-        const chalk = chalksMap.get(doorIdStr);
+        const scan = scansMap.get(doorIdStr);
         
-        // Priority: processed_url > original_url > image_url (legacy) > db door > fallback
-        const imageUrl = chalk?.processed_url || 
-                         chalk?.original_url || 
-                         chalk?.image_url || 
-                         dbDoor?.image_url || 
-                         dbDoor?.imageUrl || "";
+        // Use chalkImage (processed_url) or fallback to original_url while processing
+        let imageUrl = scan?.chalkImage || scan?.original_url || "";
+        
+        // Debug logging for doors with scans
+        if (scan) {
+          console.log(`Door ${doorIdStr}: imageUrl=${imageUrl}, status=${scan.status}`);
+        }
         
         allDoors.push({
           id: doorIdStr,
@@ -146,16 +162,17 @@ export async function fetchDoorsForTerm(term: AcademicTerm): Promise<Door[]> {
           academicYear: term.academicYear,
           semester: term.semester,
           floor: floor,
-          createdAt: chalk?.created_at || dbDoor?.created_at || new Date().toISOString(),
-          nameOfOwner: chalk?.owner_name || dbDoor?.name_of_owner || dbDoor?.nameOfOwner || "Anonymous",
-          status: chalk?.status || 'idle',
-          style: chalk?.style || 'normal'
+          createdAt: scan?.created_at || new Date().toISOString(),
+          nameOfOwner: "Anonymous",
+          status: scan?.status || 'idle',
+          style: scan?.style || 'normal'
         });
       }
     }
 
     return allDoors;
   } catch (err) {
-      return [];
+    console.error('Error fetching doors for term:', err);
+    return [];
   }
 }

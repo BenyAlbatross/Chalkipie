@@ -56,13 +56,13 @@ const DoorTile = memo(function DoorTile({ door, onClick, doorRef }: DoorTileProp
 
           {/* Image Content */}
           <div className="absolute inset-0" style={{ padding: '8px' }}>
-            <div className="relative h-full w-full overflow-hidden border-2 border-dashed border-gray-300 rounded-sm">
+            <div className="relative h-full w-full overflow-hidden border-2 border-dashed border-gray-300 rounded-sm bg-black">
               {door.imageUrl ? (
                 <Image
                   src={door.imageUrl}
                   alt={`Room ${roomNumber}`}
                   fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105 filter group-hover:sepia-[.3]"
+                  className="object-contain transition-transform duration-500 group-hover:scale-105"
                   sizes="160px"
                   unoptimized
                 />

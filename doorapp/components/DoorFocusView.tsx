@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import ImageUploader from './ImageUploader';
-import { supabase } from '@/lib/supabaseClient';
+import { fetchScanByRoomId } from '@/lib/api';
 
 interface DoorFocusViewProps {
   door: Door;
@@ -28,8 +28,11 @@ export default function DoorFocusView({
   hasPrevious,
   hasNext 
 }: DoorFocusViewProps) {
-  const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [viewingStyle, setViewingStyle] = useState<'normal' | 'pretty' | 'ugly' | 'slop' | null>(null);
+  const [styleUrls, setStyleUrls] = useState<{pretty?: string, ugly?: string, slop?: string}>({});
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [doorPosition, setDoorPosition] = useState({ x: 0, y: 0, width: 160, height: 280 });
 
   // Measure door element position and size
@@ -45,6 +48,32 @@ export default function DoorFocusView({
     }
   }, [doorElement]);
 
+  // Preload styled images when modal opens
+  useEffect(() => {
+    const compositeId = door.id.replace('gen-', '');
+    fetchScanByRoomId(compositeId).then(data => {
+      if (data) {
+        const newStyleUrls: {pretty?: string, ugly?: string, slop?: string} = {};
+        if (data.prettifyImage) newStyleUrls.pretty = data.prettifyImage;
+        if (data.uglifyImage) newStyleUrls.ugly = data.uglifyImage;
+        if (data.sloppifyText) newStyleUrls.slop = data.sloppifyText;
+        setStyleUrls(newStyleUrls);
+        
+        // Preload images in background and track when loaded
+        if (newStyleUrls.pretty) {
+          const img = new window.Image();
+          img.onload = () => setLoadedImages(prev => new Set(prev).add(newStyleUrls.pretty!));
+          img.src = newStyleUrls.pretty;
+        }
+        if (newStyleUrls.ugly) {
+          const img = new window.Image();
+          img.onload = () => setLoadedImages(prev => new Set(prev).add(newStyleUrls.ugly!));
+          img.src = newStyleUrls.ugly;
+        }
+      }
+    }).catch(e => console.error('Error preloading styled images:', e));
+  }, [door.id]);
+
   // Polling for processed images or missing data
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -52,31 +81,37 @@ export default function DoorFocusView({
     const checkStatus = async () => {
       const compositeId = door.id.replace('gen-', '');
       try {
-        const { data, error } = await supabase
-          .from('door_chalks')
-          .select('*')
-          .eq('id', compositeId)
-          .single();
+        const data = await fetchScanByRoomId(compositeId);
 
-        if (!error && data) {
-          const newUrl = data.processed_url || data.original_url || data.image_url;
+        if (data) {
+          // Use chalkImage (processed_url) from backend
+          const newUrl = data.chalkImage || data.original_url || '';
+
+          // Update style URLs when available
+          const newStyleUrls: {pretty?: string, ugly?: string, slop?: string} = {};
+          if (data.prettifyImage) newStyleUrls.pretty = data.prettifyImage;
+          if (data.uglifyImage) newStyleUrls.ugly = data.uglifyImage;
+          if (data.sloppifyText) newStyleUrls.slop = data.sloppifyText;
+          
+          setStyleUrls(prev => ({...prev, ...newStyleUrls}));
+
           if (newUrl && (newUrl !== door.imageUrl || data.status !== door.status)) {
             if (onUpdate) {
               onUpdate(door.id, {
                 imageUrl: newUrl,
                 status: data.status,
-                style: data.style
+                style: data.style || 'normal'
               });
             }
           }
         }
       } catch (e) {
-        // ignore
+        console.error('Error polling scan status:', e);
       }
     };
 
-    // Poll if processing OR if image is missing (to catch initial data loads)
-    if (door.status === 'extracted' || door.status === 'processing' || !door.imageUrl) {
+    // Poll if queued, extracted (processing), or if image is missing, or if viewing a style
+    if (door.status === 'queued' || door.status === 'extracted' || !door.imageUrl || viewingStyle) {
       intervalId = setInterval(checkStatus, 3000);
       checkStatus(); // Immediate check
     }
@@ -84,7 +119,7 @@ export default function DoorFocusView({
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [door.status, door.id, door.imageUrl, onUpdate]);
+  }, [door.status, door.id, door.imageUrl, onUpdate, viewingStyle]);
 
   // Close upload view
   const handleCloseUpload = () => setIsUploading(false);
@@ -93,45 +128,57 @@ export default function DoorFocusView({
     if (onUpdate) {
       onUpdate(door.id, {
         imageUrl: url,
-        status: 'completed'
+        status: 'queued' // Set to queued so backend starts processing all styles
       });
     }
     setTimeout(handleCloseUpload, 1500);
   };
 
-  const handleAction = async (actionStyle: string) => {
-    setSelectedAction(actionStyle);
+  const handleStyleClick = (style: 'pretty' | 'ugly' | 'slop') => {
+    const targetUrl = style === 'pretty' ? styleUrls.pretty : style === 'ugly' ? styleUrls.ugly : styleUrls.slop;
     
-    const styleMap: { [key: string]: string } = {
-      'beautify': 'pretty',
-      'uglify': 'ugly',
-      'sloppify': 'aislop'
-    };
-    
-    const dbStyle = styleMap[actionStyle] || actionStyle;
-    const compositeId = door.id.replace('gen-', '');
-
-    try {
-      if (onUpdate) {
-        onUpdate(door.id, { status: 'extracted' });
-      }
-
-      const response = await fetch('/api/chalk/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          id: compositeId, 
-          style: dbStyle 
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to start processing');
-    } catch (error) {
-      console.error('Action error:', error);
-      if (onUpdate) onUpdate(door.id, { status: 'failed' });
-    } finally {
-      setTimeout(() => setSelectedAction(null), 2000);
+    if (!targetUrl) {
+      // URL not available yet, just switch and show loading
+      setViewingStyle(style);
+      return;
     }
+    
+    // If already loaded, switch instantly
+    if (loadedImages.has(targetUrl)) {
+      setViewingStyle(style);
+      return;
+    }
+    
+    // Show transition loading while image loads
+    setIsTransitioning(true);
+    const img = new window.Image();
+    img.onload = () => {
+      setLoadedImages(prev => new Set(prev).add(targetUrl));
+      setViewingStyle(style);
+      setIsTransitioning(false);
+    };
+    img.onerror = () => {
+      // On error, still switch but stop loading
+      setViewingStyle(style);
+      setIsTransitioning(false);
+    };
+    img.src = targetUrl;
+  };
+
+  const getCurrentImageUrl = () => {
+    if (viewingStyle === 'pretty') return styleUrls.pretty;
+    if (viewingStyle === 'ugly') return styleUrls.ugly;
+    if (viewingStyle === 'slop') return styleUrls.slop;
+    return door.imageUrl;
+  };
+
+  const isStyleLoading = () => {
+    if (isTransitioning) return true;
+    if (!viewingStyle) return false;
+    if (viewingStyle === 'pretty') return !styleUrls.pretty && door.status !== 'failed';
+    if (viewingStyle === 'ugly') return !styleUrls.ugly && door.status !== 'failed';
+    if (viewingStyle === 'slop') return !styleUrls.slop && door.status !== 'failed';
+    return false;
   };
 
   const roomNumber = `${String(door.floor).padStart(2, '0')}-${String(door.doorNumber % 1000).padStart(3, '0')}`;
@@ -180,9 +227,10 @@ export default function DoorFocusView({
           <div 
             className="relative bg-[#fdfbf7] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] pointer-events-auto overflow-hidden transition-all duration-300 border-4 border-black"
             style={{ 
-              width: isUploading ? '550px' : `${Math.max(doorPosition.width * 1.5, 320)}px`,
-              height: isUploading ? 'auto' : `${Math.max(doorPosition.height * 1.5, 480)}px`,
-              minHeight: isUploading ? '400px' : '480px',
+              width: isUploading ? '550px' : 'min(350px, 85vw)',
+              height: isUploading ? 'auto' : '60vh',
+              minHeight: isUploading ? '400px' : '350px',
+              maxHeight: '60vh',
             }}
           >
             {isUploading ? (
@@ -201,16 +249,16 @@ export default function DoorFocusView({
             ) : (
               <>
                 <div className="absolute inset-0" style={{ padding: '8px' }}>
-                  <div className="relative h-full w-full overflow-hidden border-2 border-dashed border-gray-300 rounded-sm bg-white">
-                    {door.imageUrl ? (
+                  <div className="relative h-full w-full overflow-hidden border-2 border-dashed border-gray-300 rounded-sm bg-[#fdfbf7]">
+                    {getCurrentImageUrl() ? (
                       <Image
-                        src={door.imageUrl}
+                        src={getCurrentImageUrl()!}
                         alt={`Room ${roomNumber}`}
                         fill
-                        className="object-cover"
-                        sizes="240px"
+                        className="object-contain"
+                        sizes="(max-width: 768px) 85vw, 350px"
                         priority
-                        unoptimized
+                        quality={80}
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 bg-gray-50">
@@ -220,11 +268,33 @@ export default function DoorFocusView({
                       </div>
                     )}
                     
-                    {(door.status === 'extracted' || door.status === 'processing') && (
-                      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-white p-4 text-center">
-                        <div className="animate-spin text-3xl mb-2">🎨</div>
-                        <p className="font-bold font-handwritten text-xl">Creating Magic...</p>
-                        <p className="text-xs opacity-80">This will take a few seconds</p>
+                    {((door.status === 'queued' || door.status === 'extracted') && !viewingStyle) && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-white p-4 text-center">
+                        <div className="animate-spin text-4xl mb-3">🎨</div>
+                        <p className="font-bold font-handwritten text-2xl mb-2">Creating Magic...</p>
+                        <p className="text-sm opacity-90 mb-3">Processing your artwork</p>
+                        <div className="w-48 h-2 bg-white/20 rounded-full overflow-hidden">
+                          <div className="h-full bg-pastel-yellow animate-pulse" style={{ width: '70%' }}></div>
+                        </div>
+                        <p className="text-xs opacity-70 mt-2">This may take 30-60 seconds</p>
+                      </div>
+                    )}
+
+                    {isStyleLoading() && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-white p-4 text-center">
+                        <div className="animate-spin text-4xl mb-3">
+                          {viewingStyle === 'pretty' ? '✨' : viewingStyle === 'ugly' ? '🤪' : '📝'}
+                        </div>
+                        <p className="font-bold font-handwritten text-2xl mb-2">
+                          {viewingStyle === 'pretty' ? 'Beautifying...' : 
+                           viewingStyle === 'ugly' ? 'Uglifying...' : 
+                           'Sloppifying...'}
+                        </p>
+                        <p className="text-sm opacity-90 mb-3">Generating your {viewingStyle} version</p>
+                        <div className="w-48 h-2 bg-white/20 rounded-full overflow-hidden">
+                          <div className="h-full bg-pastel-pink animate-pulse" style={{ width: '70%' }}></div>
+                        </div>
+                        <p className="text-xs opacity-70 mt-2">This may take up to 30 seconds</p>
                       </div>
                     )}
                   </div>
@@ -256,32 +326,43 @@ export default function DoorFocusView({
                 Upload Art
               </button>
 
-              <button
-                onClick={() => handleAction('beautify')}
-                className="px-6 py-2 bg-pastel-pink border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform disabled:opacity-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                style={{ borderRadius: '15px 225px 15px 255px/255px 15px 225px 15px' }}
-                disabled={selectedAction !== null}
-              >
-                {selectedAction === 'beautify' ? 'Beautifying...' : 'Beautify'}
-              </button>
+              {door.imageUrl && (
+                <>
+                  <button
+                    onClick={() => handleStyleClick('pretty')}
+                    className={`px-6 py-2 border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${viewingStyle === 'pretty' ? 'bg-pastel-pink ring-4 ring-pink-400' : 'bg-pastel-pink'}`}
+                    style={{ borderRadius: '15px 225px 15px 255px/255px 15px 225px 15px' }}
+                  >
+                    Beautify ✨
+                  </button>
 
-              <button
-                onClick={() => handleAction('uglify')}
-                className="px-6 py-2 bg-pastel-green border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform disabled:opacity-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
-                disabled={selectedAction !== null}
-              >
-                {selectedAction === 'uglify' ? 'Uglifying...' : 'Uglify'}
-              </button>
+                  <button
+                    onClick={() => handleStyleClick('ugly')}
+                    className={`px-6 py-2 border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${viewingStyle === 'ugly' ? 'bg-pastel-green ring-4 ring-green-400' : 'bg-pastel-green'}`}
+                    style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
+                  >
+                    Uglify 🤪
+                  </button>
 
-              <button
-                onClick={() => handleAction('sloppify')}
-                className="px-6 py-2 bg-gray-200 border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform disabled:opacity-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                style={{ borderRadius: '15px 225px 15px 255px/255px 15px 225px 15px' }}
-                disabled={selectedAction !== null}
-              >
-                {selectedAction === 'sloppify' ? 'Sloppifying...' : 'Sloppify'}
-              </button>
+                  <button
+                    onClick={() => handleStyleClick('slop')}
+                    className={`px-6 py-2 border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${viewingStyle === 'slop' ? 'bg-gray-200 ring-4 ring-gray-400' : 'bg-gray-200'}`}
+                    style={{ borderRadius: '15px 225px 15px 255px/255px 15px 225px 15px' }}
+                  >
+                    Sloppify 📝
+                  </button>
+
+                  {viewingStyle && (
+                    <button
+                      onClick={() => setViewingStyle(null)}
+                      className="px-6 py-2 bg-pastel-blue border-3 border-black font-bold text-xl hover:scale-[1.05] transition-transform shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                      style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
+                    >
+                      Show Original
+                    </button>
+                  )}
+                </>
+              )}
 
               <button
                 onClick={onClose}

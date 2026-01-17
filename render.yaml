@@ -1,0 +1,3 @@
+# Render Deployment Configuration
+# Note: Backend services removed - using chalk-pyserver instead
+services: []

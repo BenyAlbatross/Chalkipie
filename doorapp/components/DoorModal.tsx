@@ -42,14 +42,33 @@ export default function DoorModal({ door, onClose }: DoorModalProps) {
 
         {/* Image section */}
         <div className="relative w-full aspect-[4/3] bg-light-gray">
-          <Image
-            src={door.imageUrl}
-            alt={`Door ${door.doorNumber}`}
-            fill
-            className="object-contain"
-            sizes="(max-width: 1024px) 100vw, 1024px"
-            priority
-          />
+          {door.imageUrl ? (
+            <Image
+              src={door.imageUrl}
+              alt={`Door ${door.doorNumber}`}
+              fill
+              className="object-contain"
+              sizes="(max-width: 1024px) 100vw, 1024px"
+              priority
+              unoptimized
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-100">
+              <span className="text-6xl mb-4 opacity-30">🎨</span>
+              <p className="text-xl font-medium opacity-50">No Artwork Yet</p>
+              <p className="text-sm opacity-30 mt-2">Upload to get started</p>
+            </div>
+          )}
+          
+          {(door.status === 'queued' || door.status === 'extracted') && (
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+              <div className="animate-spin text-5xl mb-4">🎨</div>
+              <p className="font-bold text-2xl mb-2">Processing...</p>
+              <div className="w-64 h-3 bg-white/20 rounded-full overflow-hidden mt-2">
+                <div className="h-full bg-pastel-yellow animate-pulse" style={{ width: '70%' }}></div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Info section */}

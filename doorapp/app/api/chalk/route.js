@@ -1,47 +1,39 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Standard client works fine for public routes
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
 
 export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get('image');
-    const style = formData.get('style'); 
     const semester = formData.get('semester');
-    const id = formData.get('id'); // level + unit number
+    const roomId = formData.get('id'); // room ID like "17124"
 
-    // 1. Upload to Storage
-    const fileName = `public/${Date.now()}-${file.name}`;
-    const { data: uploadData, error: storageError } = await supabase.storage
-      .from('chalk-images')
-      .upload(fileName, file);
+    if (!file) {
+      return NextResponse.json({ error: 'No image file provided' }, { status: 400 });
+    }
 
-    if (storageError) throw storageError;
+    // Create FormData to forward to backend
+    const backendFormData = new FormData();
+    backendFormData.append('image', file);
+    if (semester) backendFormData.append('semester', semester);
+    if (roomId) backendFormData.append('roomId', roomId);
 
-    // 2. Get Public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('chalk-images')
-      .getPublicUrl(fileName);
+    // Forward request to chalk-pyserver
+    const response = await fetch(`${BACKEND_URL}/extract`, {
+      method: 'POST',
+      body: backendFormData,
+    });
 
-    // 3. Insert or Update metadata matching the new schema
-    const { error: dbError } = await supabase
-      .from('door_chalks')
-      .upsert({
-        id: id,
-        original_url: publicUrl,
-        processed_url: publicUrl, // Default to same for now
-        style: style,
-        semester: semester,
-        status: 'completed'
-      }, { onConflict: 'id' });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Backend processing failed');
+    }
 
-    return NextResponse.json({ success: true, url: publicUrl });
+    const data = await response.json();
+    return NextResponse.json({ success: true, data });
   } catch (error) {
+    console.error('Upload error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
