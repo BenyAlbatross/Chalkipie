@@ -14,6 +14,8 @@ export interface Door {
   floor: number;         // Floor level where door is located
   createdAt: string;
   nameOfOwner: string; // Defaults to "Anonymous"
+  status?: string;     // e.g., "processing", "completed", "extracted"
+  style?: string;      // e.g., "normal", "ugly", "pretty", "aislop"
 }
 
 /**

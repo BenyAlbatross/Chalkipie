@@ -28,17 +28,17 @@ export async function POST(request) {
       .from('chalk-images')
       .getPublicUrl(fileName);
 
-    // 3. Insert metadata matching the new schema
+    // 3. Insert or Update metadata matching the new schema
     const { error: dbError } = await supabase
       .from('door_chalks')
-      .insert({
+      .upsert({
         id: id,
         original_url: publicUrl,
         processed_url: publicUrl, // Default to same for now
         style: style,
         semester: semester,
         status: 'completed'
-      });
+      }, { onConflict: 'id' });
 
     return NextResponse.json({ success: true, url: publicUrl });
   } catch (error) {

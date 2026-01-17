@@ -37,7 +37,7 @@ const generateDoorsForFloor = (
     doors.push({
       id: `door-${academicYear}-s${semester}-f${floor}-${i}`,
       doorNumber,
-      imageUrl: PLACEHOLDER_IMAGES[imageIndex],
+      imageUrl: PLACEHOLDER_IMAGES[imageIndex] || "https://images.unsplash.com/photo-1517649763962-0c623066013b",
       academicYear,
       semester,
       floor,

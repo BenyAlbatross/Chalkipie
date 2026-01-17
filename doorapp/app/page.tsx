@@ -153,6 +153,16 @@ export default function Home() {
   const handleCloseModal = () => {
     setSelectedDoor(null);
   };
+
+  const handleDoorUpdate = (doorId: string, updates: Partial<Door>) => {
+    setDoors(prevDoors => 
+      prevDoors.map(d => d.id === doorId ? { ...d, ...updates } : d)
+    );
+    // Also update selectedDoor if it's the one being updated
+    if (selectedDoor?.id === doorId) {
+      setSelectedDoor(prev => prev ? { ...prev, ...updates } : null);
+    }
+  };
   
   // Door navigation in zoom view
   const handleNavigateToPreviousDoor = () => {
@@ -305,6 +315,7 @@ export default function Home() {
           door={selectedDoor}
           doorElement={doorElementRefs.current[selectedDoor.id] || null}
           onClose={handleCloseModal}
+          onUpdate={handleDoorUpdate}
           onPrevious={handleNavigateToPreviousDoor}
           onNext={handleNavigateToNextDoor}
           hasPrevious={hasPreviousDoor()}
