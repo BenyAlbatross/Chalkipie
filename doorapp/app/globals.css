@@ -150,6 +150,9 @@ body {
   display: flex;
   align-items: flex-end;
   overflow: visible;
+  /* Browser Optimization: Skip rendering off-screen rows */
+  content-visibility: auto;
+  contain-intrinsic-size: 450px;
 }
 
 .door-tile {

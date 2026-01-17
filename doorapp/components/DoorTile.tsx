@@ -2,54 +2,21 @@
 
 import { Door } from '@/types/door';
 import Image from 'next/image';
-import { useEffect, useRef, memo } from 'react';
-import rough from 'roughjs';
+import { memo } from 'react';
 
 interface DoorTileProps {
   door: Door;
   onClick: (door: Door) => void;
 }
 
+// Pre-calculated "messy" paths to simulate hand-drawn sketch look
+// We use multiple passes with slight variations to create the "sketchy" feel
+const FRAME_PASS_1 = "M5,4 L154,6 L157,276 L4,277 L5,4";
+const FRAME_PASS_2 = "M4,5 L157,4 L155,278 L6,275 L4,5";
+const SKETCH_SCRATCH = "M10,8 L150,10 M152,15 L154,270 M150,274 L8,272 M5,270 L7,12";
+
 const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const doorbellCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const rc = rough.canvas(canvas);
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Rough wooden frame
-      rc.line(4, 4, canvas.width - 4, 4, { stroke: '#5D4037', strokeWidth: 3, roughness: 2 });
-      rc.line(4, 8, canvas.width - 4, 8, { stroke: '#8D6E63', strokeWidth: 1, roughness: 1 });
-      rc.line(4, 4, 4, canvas.height, { stroke: '#5D4037', strokeWidth: 3, roughness: 2 });
-      rc.line(canvas.width - 4, 4, canvas.width - 4, canvas.height, { stroke: '#5D4037', strokeWidth: 3, roughness: 2 });
-    }
-    
-    // Doorbell
-    if (doorbellCanvasRef.current) {
-      const canvas = doorbellCanvasRef.current;
-      const rc = rough.canvas(canvas);
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      rc.circle(12, 12, 18, {
-        fill: '#e0e0e0',
-        fillStyle: 'dots',
-        stroke: '#000',
-        strokeWidth: 2,
-        roughness: 1.5,
-      });
-      rc.circle(12, 12, 8, {
-        fill: '#333',
-        fillStyle: 'solid',
-        stroke: 'none'
-      });
-    }
-  }, []);
-
+  // ...
   const roomNumber = `${String(door.floor).padStart(2, '0')}-${String(door.doorNumber % 1000).padStart(3, '0')}`;
 
   return (
@@ -70,21 +37,21 @@ const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
             background: 'white',
           }}
         >
-          {/* Frame Canvas */}
-          <canvas
-            ref={canvasRef}
-            width={160}
-            height={280}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              pointerEvents: 'none',
-              zIndex: 20,
-            }}
-          />
+          {/* OPTIMIZED: SVG Frame with hand-drawn feel */}
+          <svg
+            width="160"
+            height="280"
+            viewBox="0 0 160 280"
+            className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+            style={{ overflow: 'visible' }}
+          >
+             {/* Pass 1: Dark Brown Frame */}
+             <path d={FRAME_PASS_1} fill="none" stroke="#5D4037" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+             {/* Pass 2: Slightly offset second stroke */}
+             <path d={FRAME_PASS_2} fill="none" stroke="#5D4037" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+             {/* Inner sketchy scratches */}
+             <path d={SKETCH_SCRATCH} fill="none" stroke="#8D6E63" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+          </svg>
 
           {/* Image Content */}
           <div className="absolute inset-0" style={{ padding: '8px' }}>
@@ -108,14 +75,29 @@ const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
         </button>
       </div>
       
-      {/* Doorbell */}
+      {/* OPTIMIZED: SVG Doorbell with hand-drawn feel */}
       <div style={{ marginBottom: '120px' }}>
-        <canvas
-          ref={doorbellCanvasRef}
-          width={24}
-          height={24}
-          style={{ width: '24px', height: '24px' }}
-        />
+         <svg width="24" height="24" viewBox="0 0 24 24">
+             {/* Messy circle background */}
+             <circle cx="12" cy="12" r="10" fill="#e0e0e0" opacity="0.6" />
+             <path 
+                d="M12,2 C18,2 22,6 22,12 C22,18 18,22 12,22 C6,22 2,18 2,12 C2,6 6,2 12,2" 
+                fill="none" 
+                stroke="black" 
+                strokeWidth="1.5" 
+                strokeDasharray="2,3"
+                opacity="0.8"
+             />
+             <path 
+                d="M12,4 C16,4 20,8 20,12 C20,16 16,20 12,20 C8,20 4,16 4,12 C4,8 8,4 12,4" 
+                fill="none" 
+                stroke="#555" 
+                strokeWidth="1" 
+                opacity="0.5"
+             />
+             {/* Button */}
+             <circle cx="12" cy="12" r="5" fill="#333" />
+         </svg>
       </div>
     </div>
   );

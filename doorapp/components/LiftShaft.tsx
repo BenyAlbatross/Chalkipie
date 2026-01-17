@@ -38,6 +38,15 @@ export default function LiftShaft({
 
         {/* Floor markers */}
         {floors.map((floor, index) => {
+          // Virtualization: Only render markers close to the selected floor
+          // selectedFloor is the floor NUMBER. We need to match it against current floor being mapped.
+          // If selectedFloor is null, render all? Or just default range?
+          // The page logic ensures selectedFloor is set eventually.
+          
+          const isVisible = selectedFloor === null || Math.abs(floor - selectedFloor) <= 2;
+          
+          if (!isVisible) return null;
+
           const fromBottom = index * FLOOR_HEIGHT;
           return (
             <div

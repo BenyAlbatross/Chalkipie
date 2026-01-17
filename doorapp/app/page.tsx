@@ -196,18 +196,39 @@ export default function Home() {
                   <div className="bg-white border-b-2 border-black" style={{ height: '70px' }}></div>
                   
                   <div className="flex flex-col-reverse">
-                    {availableFloors.map((floor) => (
-                      <FloorRow
-                        key={floor}
-                        ref={(el) => {
-                          floorRefs.current[floor] = el;
-                        }}
-                        floor={floor}
-                        doors={doorsByFloor[floor] || []}
-                        onDoorClick={handleDoorClick}
-                        isActive={selectedFloor === floor}
-                      />
-                    ))}
+                    {availableFloors.map((floor) => {
+                      // VIRTUALIZATION: Only render floors close to the selected one
+                      // If selectedFloor is null, render everything (fallback)
+                      // Range: Current floor +/- 2
+                      const isVisible = selectedFloor === null || Math.abs(floor - selectedFloor) <= 2;
+                      
+                      if (isVisible) {
+                          return (
+                              <FloorRow
+                                key={floor}
+                                ref={(el) => {
+                                  floorRefs.current[floor] = el;
+                                }}
+                                floor={floor}
+                                doors={doorsByFloor[floor] || []}
+                                onDoorClick={handleDoorClick}
+                                isActive={selectedFloor === floor}
+                              />
+                          );
+                      } else {
+                          // Render placeholder to maintain scroll height
+                          return (
+                              <div 
+                                key={floor}
+                                style={{ height: '450px' }} 
+                                ref={(el) => {
+                                  // Keep ref if needed for scroll calculations, though content is empty
+                                  floorRefs.current[floor] = el;
+                                }}
+                              />
+                          );
+                      }
+                    })}
                   </div>
                 </div>
               </div>
