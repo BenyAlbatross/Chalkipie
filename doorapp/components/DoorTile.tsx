@@ -24,7 +24,7 @@ export default function DoorTile({ door, onClick }: DoorTileProps) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
       
-      // Draw rough border without bottom edge - draw top, left, and right lines
+      // Draw rough border on top and sides only (no bottom)
       // Top line
       rc.line(2, 2, canvas.width - 2, 2, {
         stroke: '#000000',
@@ -33,14 +33,14 @@ export default function DoorTile({ door, onClick }: DoorTileProps) {
         bowing: 1,
       });
       // Left line
-      rc.line(2, 2, 2, canvas.height - 2, {
+      rc.line(2, 2, 2, canvas.height, {
         stroke: '#000000',
         strokeWidth: 1.5,
         roughness: 1.5,
         bowing: 1,
       });
-      // Right line
-      rc.line(canvas.width - 2, 2, canvas.width - 2, canvas.height - 2, {
+      // Right line  
+      rc.line(canvas.width - 2, 2, canvas.width - 2, canvas.height, {
         stroke: '#000000',
         strokeWidth: 1.5,
         roughness: 1.5,
@@ -85,16 +85,14 @@ export default function DoorTile({ door, onClick }: DoorTileProps) {
         />
 
         {/* Window image area */}
-        <div className="relative h-full w-full overflow-hidden p-2">
-          <div className="relative h-full w-full overflow-hidden border border-black/30">
-            <Image
-              src={door.imageUrl}
-              alt={`Room ${roomNumber}`}
-              fill
-              className="object-cover transition-all duration-300 group-hover:scale-105"
-              sizes="160px"
-            />
-          </div>
+        <div className="relative h-full w-full overflow-hidden">
+          <Image
+            src={door.imageUrl}
+            alt={`Room ${roomNumber}`}
+            fill
+            className="object-cover transition-all duration-300 group-hover:scale-105"
+            sizes="160px"
+          />
         </div>
 
         {/* Owner name on hover */}
