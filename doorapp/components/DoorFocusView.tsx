@@ -27,7 +27,8 @@ export default function DoorFocusView({
 }: DoorFocusViewProps) {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [doorPosition, setDoorPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  // Default to standard door size (160x280) so it's visible immediately
+  const [doorPosition, setDoorPosition] = useState({ x: 0, y: 0, width: 160, height: 280 });
 
   // ... (Keep existing useEffects)
 
@@ -54,18 +55,18 @@ export default function DoorFocusView({
 
   return (
     <AnimatePresence mode="wait" custom={direction}>
-      {/* Dimmed Background Overlay */}
+      {/* Dimmed Background Overlay - High Z-index to cover FancyPantsGuy (z-50) */}
       <motion.div 
         key="backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-md z-40"
+        className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60]"
         onClick={onClose}
       />
 
-      {/* Centered Door Container - carousel animation */}
+      {/* Centered Door Container */}
       <motion.div
         key={door.id}
         initial={{ 
@@ -88,36 +89,47 @@ export default function DoorFocusView({
           stiffness: 300,
           damping: 30,
         }}
-        className="fixed inset-0 z-50 pointer-events-none flex flex-col items-center justify-center"
+        className="fixed inset-0 z-[70] pointer-events-none flex flex-col items-center justify-center"
       >
         <div className="flex flex-col items-center justify-center w-full max-w-2xl">
-          {/* Room number above door - centered */}
+          {/* Room number above door - Hand-drawn Sign Style */}
           <div 
-            className="mb-6 px-2 py-1 text-center font-bold text-white"
-            style={{ fontFamily: 'var(--font-patrick-hand), cursive', fontSize: '3rem' }}
+            className="mb-6 px-8 py-3 text-center font-bold text-black bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[-2deg]"
+            style={{ 
+                fontFamily: 'var(--font-caveat-brush), cursive', 
+                fontSize: '3rem',
+                borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' 
+            }}
           >
             {roomNumber}
           </div>
 
-          {/* Door Preview OR Upload Form */}
+          {/* Door Preview OR Upload Form - Enhanced Hand-drawn UI */}
           <div 
-            className="relative bg-white shadow-2xl pointer-events-auto rounded-lg overflow-hidden transition-all duration-300"
+            className="relative bg-[#fdfbf7] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] pointer-events-auto overflow-hidden transition-all duration-300 border-4 border-black"
             style={{ 
-              width: isUploading ? '500px' : `${doorPosition.width * 1.5}px`,
+              width: isUploading ? '550px' : `${doorPosition.width * 1.5}px`,
               height: isUploading ? 'auto' : `${doorPosition.height * 1.5}px`,
               minHeight: isUploading ? '400px' : 'auto',
+              borderRadius: '2px 4px 2px 4px' // Slightly irregular box
             }}
           >
             {isUploading ? (
-              <div className="p-6 h-full flex flex-col bg-white">
-                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-xl">Upload Art</h3>
-                    <button onClick={handleCloseUpload} className="text-sm underline">Cancel</button>
+              <div className="p-8 h-full flex flex-col bg-[#fdfbf7]">
+                 <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-2xl" style={{ fontFamily: 'var(--font-patrick-hand), cursive' }}>Upload Your Masterpiece</h3>
+                    <button 
+                        onClick={handleCloseUpload} 
+                        className="text-lg hover:underline font-bold text-red-600"
+                        style={{ fontFamily: 'var(--font-patrick-hand), cursive' }}
+                    >
+                        Cancel
+                    </button>
                  </div>
                  <ImageUploader 
-                    doorId={`${door.floor}${String(door.doorNumber % 1000).padStart(3, '0')}`} 
                     initialSemester={door.semester} 
-                    academicYear={door.academicYear}
+                    academicYear={door.academicYear} 
+                    doorId={`${door.floor}${String(door.doorNumber % 1000).padStart(3, '0')}`} 
                     onUploadSuccess={() => setTimeout(handleCloseUpload, 1500)} 
                  />
               </div>
@@ -159,47 +171,62 @@ export default function DoorFocusView({
               className="mt-8 pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="flex gap-3 items-center justify-center flex-wrap">
+            <div className="flex gap-4 items-center justify-center flex-wrap">
               <button
                 onClick={() => setIsUploading(true)}
-                className="px-6 py-3 bg-pastel-yellow border-3 border-black rounded-lg font-bold text-base hover:scale-110 hover:bg-pastel-orange transition-transform shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-pink"
-                style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
+                className="px-6 py-2 bg-pastel-yellow border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform focus:outline-none focus:ring-2 focus:ring-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                style={{ 
+                    fontFamily: 'var(--font-patrick-hand), cursive',
+                    borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px'
+                }}
               >
-                🎨 Upload Art
+                Upload Art
               </button>
 
               <button
                 onClick={() => handleAction('beautify')}
-                className="px-6 py-3 bg-pastel-pink border-3 border-black rounded-lg font-bold text-base hover:scale-110 transition-transform shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-yellow disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
+                className="px-6 py-2 bg-pastel-pink border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                style={{ 
+                    fontFamily: 'var(--font-patrick-hand), cursive',
+                    borderRadius: '15px 225px 15px 255px/255px 15px 225px 15px'
+                }}
                 disabled={selectedAction !== null}
               >
-                {selectedAction === 'beautify' ? '✨ Beautifying...' : '✨ Beautify'}
+                {selectedAction === 'beautify' ? 'Beautifying...' : 'Beautify'}
               </button>
 
               <button
                 onClick={() => handleAction('uglify')}
-                className="px-6 py-3 bg-pastel-green border-3 border-black rounded-lg font-bold text-base hover:scale-110 transition-transform shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-yellow disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
+                className="px-6 py-2 bg-pastel-green border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                style={{ 
+                    fontFamily: 'var(--font-patrick-hand), cursive',
+                    borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px'
+                }}
                 disabled={selectedAction !== null}
               >
-                {selectedAction === 'uglify' ? '👹 Uglifying...' : '👹 Uglify'}
+                {selectedAction === 'uglify' ? 'Uglifying...' : 'Uglify'}
               </button>
 
               <button
                 onClick={() => handleAction('sloppify')}
-                className="px-6 py-3 bg-gray-400 border-3 border-black rounded-lg font-bold text-base hover:scale-110 transition-transform shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-yellow disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
+                className="px-6 py-2 bg-gray-200 border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                style={{ 
+                    fontFamily: 'var(--font-patrick-hand), cursive',
+                    borderRadius: '15px 225px 15px 255px/255px 15px 225px 15px'
+                }}
                 disabled={selectedAction !== null}
               >
-                {selectedAction === 'sloppify' ? '🌀 Sloppifying...' : '🌀 Sloppify'}
+                {selectedAction === 'sloppify' ? 'Sloppifying...' : 'Sloppify'}
               </button>
 
               {/* Close Button */}
               <button
                 onClick={onClose}
-                className="px-4 py-3 bg-white border-3 border-black rounded-lg font-bold text-base hover:scale-110 hover:bg-pastel-pink transition-all shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-yellow"
-                style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
+                className="w-10 h-10 bg-white border-3 border-black font-bold text-xl hover:scale-110 transition-transform flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                style={{ 
+                    fontFamily: 'var(--font-patrick-hand), cursive',
+                    borderRadius: '50%'
+                }}
               >
                 ✕
               </button>
@@ -221,7 +248,7 @@ export default function DoorFocusView({
             setDirection(-1);
             onPrevious();
           }}
-          className="fixed left-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-white/95 border-2 border-black rounded-full flex items-center justify-center hover:bg-pastel-blue hover:scale-110 transition-all shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-yellow pointer-events-auto"
+          className="fixed left-8 top-1/2 -translate-y-1/2 z-[80] w-14 h-14 bg-white/95 border-3 border-black rounded-full flex items-center justify-center hover:bg-pastel-blue hover:scale-110 transition-all shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-yellow pointer-events-auto"
           aria-label="Previous door"
           style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
         >
@@ -239,7 +266,7 @@ export default function DoorFocusView({
             setDirection(1);
             onNext();
           }}
-          className="fixed right-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-white/95 border-2 border-black rounded-full flex items-center justify-center hover:bg-pastel-blue hover:scale-110 transition-all shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-yellow pointer-events-auto"
+          className="fixed right-8 top-1/2 -translate-y-1/2 z-[80] w-14 h-14 bg-white/95 border-3 border-black rounded-full flex items-center justify-center hover:bg-pastel-blue hover:scale-110 transition-all shadow-lg focus:outline-none focus:ring-4 focus:ring-pastel-yellow pointer-events-auto"
           aria-label="Next door"
           style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
         >

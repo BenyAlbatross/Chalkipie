@@ -24,7 +24,6 @@ export default function ImageUploader({
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   
   // Metadata state
-  const [style, setStyle] = useState('normal');
   const [semester, setSemester] = useState(String(initialSemester));
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +56,7 @@ export default function ImageUploader({
 
     const formData = new FormData();
     formData.append('image', selectedImage);
-    formData.append('style', style);
+    formData.append('style', 'normal'); // Hardcoded to normal
     formData.append('semester', formatSemesterCode(academicYear, semester));
     formData.append('id', doorId);
 
@@ -134,21 +133,8 @@ export default function ImageUploader({
         </div>
 
         {/* Metadata Inputs */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-bold mb-1">Style</label>
-            <select 
-              value={style} 
-              onChange={(e) => setStyle(e.target.value)}
-              className="w-full p-2 border-2 border-black rounded-md font-sans"
-            >
-              <option value="normal">Normal</option>
-              <option value="ugly">Ugly</option>
-              <option value="pretty">Pretty</option>
-              <option value="aislop">AI Slop</option>
-            </select>
-          </div>
-          <div>
+        <div className="flex justify-center">
+          <div className="w-1/2">
             <label className="block text-sm font-bold mb-1">Semester</label>
             <select 
               value={semester} 
