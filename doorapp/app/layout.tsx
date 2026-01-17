@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Roboto, Caveat_Brush } from "next/font/google";
+import { Geist, Geist_Mono, Patrick_Hand, Caveat_Brush } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,10 +12,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const roboto = Roboto({
-  variable: "--font-roboto",
+const patrickHand = Patrick_Hand({
+  variable: "--font-patrick-hand",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
+  weight: ["400"],
 });
 
 const caveatBrush = Caveat_Brush({
@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} ${caveatBrush.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${patrickHand.variable} ${caveatBrush.variable} antialiased`}
       >
         {children}
       </body>

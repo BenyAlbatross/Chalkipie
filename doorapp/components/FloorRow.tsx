@@ -9,16 +9,17 @@ interface FloorRowProps {
   floor: number;
   doors: Door[];
   onDoorClick: (door: Door) => void;
+  isActive?: boolean;
 }
 
 const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
-  ({ floor, doors, onDoorClick }, ref) => {
+  ({ floor, doors, onDoorClick, isActive = false }, ref) => {
     const headerRef = useRef<HTMLDivElement>(null);
     const rowRef = useRef<HTMLDivElement>(null);
     const [isHovered, setIsHovered] = useState(false);
 
     useEffect(() => {
-      if (headerRef.current && isHovered) {
+      if (headerRef.current && (isHovered || isActive)) {
         const annotation = annotate(headerRef.current, {
           type: 'circle',
           color: '#a8d8ea',
@@ -28,7 +29,7 @@ const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
         annotation.show();
         return () => annotation.remove();
       }
-    }, [isHovered]);
+    }, [isHovered, isActive]);
 
     return (
       <div 

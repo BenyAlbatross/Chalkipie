@@ -202,8 +202,10 @@ export default function Home() {
                   {/* Character Overlay */}
                   <FancyPantsGuy 
                     floors={availableFloors}
+                    doorsByFloor={doorsByFloor}
                     selectedFloor={selectedFloor}
                     onFloorChange={handleFloorSelect}
+                    isLiftMoving={isLiftMoving}
                   />
 
                   {/* Spacer to match lift shaft header height */}
@@ -219,6 +221,7 @@ export default function Home() {
                         floor={floor}
                         doors={doorsByFloor[floor] || []}
                         onDoorClick={handleDoorClick}
+                        isActive={selectedFloor === floor}
                       />
                     ))}
                   </div>

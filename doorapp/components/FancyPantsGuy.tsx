@@ -1,27 +1,24 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Door } from '@/types/door';
 
 interface FancyPantsGuyProps {
   floors: number[];
+  doorsByFloor: { [floor: number]: Door[] };
   selectedFloor: number | null;
   onFloorChange: (floor: number) => void;
+  isLiftMoving: boolean;
 }
 
 const FLOOR_HEIGHT = 450;
 const HEADER_HEIGHT = 70;
 
-// Scaling factor for size increase
 const SCALE_FACTOR = 1.8; 
-
-// Original dimensions * scale
 const CHARACTER_WIDTH = 30 * SCALE_FACTOR; 
 const CHARACTER_HEIGHT = 80 * SCALE_FACTOR; 
-
-// Original feet offset (62) * scale
 const FEET_VISUAL_OFFSET = 62 * SCALE_FACTOR;
 
-// PHYSICS CONSTANTS
 const GRAVITY = 1.2;
 const JUMP_FORCE = -28;
 const DOUBLE_JUMP_FORCE = -22;
@@ -29,7 +26,7 @@ const MOVE_SPEED = 12;
 const FRICTION = 0.82;
 const ACCELERATION = 2;
 
-export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: FancyPantsGuyProps) {
+export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onFloorChange, isLiftMoving }: FancyPantsGuyProps) {
   const state = useRef({
     x: 100,
     y: 0,
@@ -40,23 +37,25 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
     facingRight: true,
     ignoreCollisionTimer: 0,
     currentFloor: -1,
+    runFrame: 0,
+    lastFloorChangeTime: 0,
+    isRiding: false, 
+    visible: true,
   });
 
   const keys = useRef({
-    left: false, right: false, up: false, down: false, jumpPressed: false,
+    left: false, right: false, up: false, down: false, jumpPressed: false, downPressed: false
   });
 
   const characterRef = useRef<HTMLDivElement>(null);
-  const stickRef = useRef<HTMLElement | null>(null); // Cache stick element
+  const stickRef = useRef<HTMLElement | null>(null);
   const containerOffsetRef = useRef<number>(0);
   const containerWidthRef = useRef<number>(5000);
 
   // Init environment
   useEffect(() => {
     if (characterRef.current) {
-        // Cache stick element
         stickRef.current = characterRef.current.querySelector('.stick');
-
         const parent = characterRef.current.offsetParent as HTMLElement;
         if (parent) {
             let el: HTMLElement | null = parent;
@@ -76,20 +75,43 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
     }
   }, []);
 
-  // Init Position
+  // Init Position & Arrival sync
   useEffect(() => {
-    if (selectedFloor !== null && state.current.currentFloor === -1) {
+    if (!isLiftMoving && selectedFloor !== null) {
       const sortedFloors = [...floors].sort((a, b) => a - b);
       const index = sortedFloors.indexOf(selectedFloor);
       if (index !== -1) {
         const floorIndexFromTop = sortedFloors.length - 1 - index;
         const groundY = HEADER_HEIGHT + (floorIndexFromTop + 1) * FLOOR_HEIGHT;
-        state.current.y = groundY - FEET_VISUAL_OFFSET;
-        state.current.x = 200; 
-        state.current.currentFloor = selectedFloor;
+        
+        if (state.current.currentFloor === -1) {
+             state.current.x = 200;
+             state.current.y = groundY - FEET_VISUAL_OFFSET;
+             state.current.currentFloor = selectedFloor;
+             state.current.isGrounded = true;
+             state.current.visible = true;
+        } else if (state.current.isRiding) {
+             state.current.y = groundY - FEET_VISUAL_OFFSET;
+             state.current.vy = 0;
+             state.current.isGrounded = true;
+             state.current.currentFloor = selectedFloor;
+             
+             const buffer = 550; 
+             setTimeout(() => {
+                 state.current.isRiding = false;
+                 state.current.visible = true;
+             }, buffer);
+        } else {
+             state.current.currentFloor = selectedFloor;
+        }
       }
+    } else if (isLiftMoving) {
+        if (state.current.x < -20) {
+            state.current.isRiding = true;
+            state.current.visible = false;
+        }
     }
-  }, [selectedFloor, floors]);
+  }, [selectedFloor, floors, isLiftMoving]);
 
   // Input Listeners
   useEffect(() => {
@@ -102,7 +124,10 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
           if (!keys.current.up) keys.current.jumpPressed = true;
           keys.current.up = true;
           break;
-        case 'ArrowDown': case 's': case 'S': keys.current.down = true; break;
+        case 'ArrowDown': case 's': case 'S': 
+          if (!keys.current.down) keys.current.downPressed = true;
+          keys.current.down = true; 
+          break;
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -121,6 +146,25 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
     const update = () => {
       const s = state.current;
       const k = keys.current;
+      const now = Date.now();
+
+      const isInLiftShaft = s.x < -20;
+      
+      // VISIBILITY SYNC
+      if (characterRef.current) {
+          characterRef.current.style.opacity = s.visible ? '1' : '0';
+          
+          const controls = characterRef.current.querySelector('.lift-controls') as HTMLElement;
+          if (controls) {
+              controls.style.opacity = (isInLiftShaft && !isLiftMoving && s.visible) ? '1' : '0';
+          }
+      }
+
+      // PHYSICS FREEZE
+      if (s.isRiding) {
+           animationFrameId = requestAnimationFrame(update);
+           return;
+      }
 
       // PHYSICS
       if (k.left) { s.vx -= ACCELERATION; s.facingRight = false; }
@@ -130,64 +174,66 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
       if (!k.left && !k.right) s.vx *= FRICTION; else s.vx *= 0.95;
       if (Math.abs(s.vx) < 0.1) s.vx = 0;
 
-      if (k.jumpPressed) {
-        if (s.isGrounded) { s.vy = JUMP_FORCE; s.isGrounded = false; s.jumps = 1; }
-        else if (s.jumps < 2) { s.vy = DOUBLE_JUMP_FORCE; s.jumps = 2; }
-        k.jumpPressed = false; 
+      // CONTROLS
+      if (isInLiftShaft) {
+          if (now - s.lastFloorChangeTime > 500) { 
+              if (k.jumpPressed) {
+                  const sortedFloors = [...floors].sort((a, b) => a - b);
+                  const currentIndex = sortedFloors.indexOf(s.currentFloor);
+                  if (currentIndex < sortedFloors.length - 1) {
+                      const nextFloor = sortedFloors[currentIndex + 1];
+                      s.lastFloorChangeTime = now;
+                      s.isRiding = true; 
+                      s.visible = false;
+                      onFloorChange(nextFloor);
+                  }
+                  k.jumpPressed = false; 
+              } else if (k.downPressed) {
+                  const sortedFloors = [...floors].sort((a, b) => a - b);
+                  const currentIndex = sortedFloors.indexOf(s.currentFloor);
+                  if (currentIndex > 0) {
+                      const prevFloor = sortedFloors[currentIndex - 1];
+                      s.lastFloorChangeTime = now;
+                      s.isRiding = true; 
+                      s.visible = false;
+                      onFloorChange(prevFloor);
+                  }
+                  k.downPressed = false;
+              }
+          }
+      } else {
+          if (k.jumpPressed) {
+            if (s.isGrounded) { s.vy = JUMP_FORCE; s.isGrounded = false; s.jumps = 1; }
+            else if (s.jumps < 2) { s.vy = DOUBLE_JUMP_FORCE; s.jumps = 2; }
+            k.jumpPressed = false; 
+          }
+          if (k.down && s.isGrounded) { s.ignoreCollisionTimer = 10; s.isGrounded = false; s.vy = 8; }
+          k.downPressed = false;
       }
-
-      if (k.down && s.isGrounded) { s.ignoreCollisionTimer = 10; s.isGrounded = false; s.vy = 8; }
 
       s.vy += GRAVITY;
       s.x += s.vx;
       s.y += s.vy;
 
-      // HORIZONTAL BOUNDARIES
-      if (s.x < 20) { s.x = 20; s.vx = 0; }
+      // BOUNDARIES
+      if (s.x < -140) { s.x = -140; s.vx = 0; }
       const maxRight = containerWidthRef.current - CHARACTER_WIDTH - 20;
       if (s.x > maxRight) { s.x = maxRight; s.vx = 0; }
 
-      // VERTICAL HARD LIMITS (Optimization & Safety)
-      // Top Limit (Ceiling) - Prevent flying infinitely up
-      const minY = 0; // Top of container
-      if (s.y < minY) {
-          s.y = minY;
-          s.vy = 0;
-      }
-      
-      // Bottom Limit (Hard Floor) - Prevent falling forever
-      // Total height is Header + Floors
+      const minY = 0; 
+      if (s.y < minY) { s.y = minY; s.vy = 0; }
       const totalLevelHeight = HEADER_HEIGHT + (floors.length * FLOOR_HEIGHT);
       const hardFloorY = totalLevelHeight - FEET_VISUAL_OFFSET;
+      if (s.y > hardFloorY) { s.y = hardFloorY; s.vy = 0; s.isGrounded = true; s.jumps = 0; }
       
-      if (s.y > hardFloorY) {
-          s.y = hardFloorY;
-          s.vy = 0;
-          s.isGrounded = true;
-          s.jumps = 0;
-          // Snap to bottom floor index if we hit rock bottom
-          // Index 0 is top floor. Index N-1 is bottom floor.
-          // Bottom floor number is ... sortedFloors[0] (Floor 1).
-          // We need to trigger floor change if we weren't on it.
-          // But regular collision should handle it before we hit hard limit usually.
-      }
-      
-      // PLATFORM COLLISION
+      // COLLISION
       if (s.ignoreCollisionTimer > 0) {
         s.ignoreCollisionTimer--;
       } else if (s.vy >= 0) { 
         const feetY = s.y + FEET_VISUAL_OFFSET;
         const relativeFeetY = feetY - HEADER_HEIGHT;
         const prevRelativeFeetY = (feetY - s.vy) - HEADER_HEIGHT;
-        
-        // Find the "Next" floor line we might be crossing
-        // Lines are at intervals of 450.
-        // If we are at 440, next line is 450.
-        // If we are at 460, we crossed 450.
         const nextFloorLineRelative = Math.ceil(prevRelativeFeetY / FLOOR_HEIGHT) * FLOOR_HEIGHT;
-        
-        // Ensure this line is actually within the level!
-        // Max relative line is (floors.length) * FLOOR_HEIGHT.
         const maxRelativeLine = floors.length * FLOOR_HEIGHT;
 
         if (nextFloorLineRelative <= maxRelativeLine) {
@@ -204,8 +250,11 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
             if (rowIndex < sortedFloors.length) {
                 const landedFloor = sortedFloors[sortedFloors.length - 1 - rowIndex];
                 if (landedFloor !== s.currentFloor && landedFloor) {
-                    s.currentFloor = landedFloor;
-                    onFloorChange(landedFloor);
+                    if (!isInLiftShaft) {
+                        onFloorChange(landedFloor);
+                    } else {
+                        s.currentFloor = landedFloor;
+                    }
                 }
             }
             } else {
@@ -220,34 +269,31 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
       if (characterRef.current) {
         characterRef.current.style.transform = `translate(${s.x}px, ${s.y}px)`;
         
-        // Camera Lock (Vertical)
         const absoluteCharY = containerOffsetRef.current + s.y + (CHARACTER_HEIGHT / 2);
         const targetScrollY = absoluteCharY - (window.innerHeight / 2);
         if (Math.abs(window.scrollY - targetScrollY) > 2) {
              window.scrollTo({ top: targetScrollY, behavior: 'auto' });
         }
         
-        // Camera Lock (Horizontal) - Optimized: only query closest once or use cached width
-        // The container scroll requires element reference.
-        // Using `characterRef.current.parentElement?.parentElement` usually works if structure is static.
-        // Or keep `closest` if not causing lag.
         const container = characterRef.current.closest('.hotel-facade');
         if (container) {
             const containerWidth = container.clientWidth;
             const targetScrollX = s.x - (containerWidth / 2) + (CHARACTER_WIDTH / 2);
-            if (Math.abs(container.scrollLeft - targetScrollX) > 5) {
+            if (targetScrollX > 0 && Math.abs(container.scrollLeft - targetScrollX) > 5) {
                 container.scrollLeft += (targetScrollX - container.scrollLeft) * 0.1;
+            } else if (targetScrollX <= 0) {
+                container.scrollLeft = 0;
             }
         }
 
-        // Animation State Update (Using cached stickRef)
         const stick = stickRef.current;
         if (stick) {
-            if (Math.abs(s.vx) > 0.5 && s.isGrounded) {
+            const forceIdle = isInLiftShaft && (Math.abs(s.vx) < 1);
+            if (!forceIdle && Math.abs(s.vx) > 0.5 && s.isGrounded) {
                 stick.classList.add('is-running');
                 stick.classList.remove('is-jumping', 'is-falling', 'is-idle');
                 stick.style.transform = `scale(${SCALE_FACTOR}) scaleX(${s.facingRight ? 1 : -1})`;
-            } else if (!s.isGrounded) {
+            } else if (!forceIdle && !s.isGrounded) {
                 stick.classList.add(s.vy < 0 ? 'is-jumping' : 'is-falling');
                 stick.classList.remove('is-running', 'is-idle');
                 stick.style.transform = `scale(${SCALE_FACTOR}) scaleX(${s.facingRight ? 1 : -1})`;
@@ -268,7 +314,7 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
       window.removeEventListener('keyup', handleKeyUp);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [floors, onFloorChange]);
+  }, [floors, onFloorChange, isLiftMoving, doorsByFloor]);
 
   return (
     <div 
@@ -283,8 +329,8 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
           height: 30px;
           background: #333;
           border-radius: 3px;
-          transition: transform 0.1s; /* Faster update for scale/direction */
-          transform-origin: 50% 0; /* Important for scaling */
+          transition: transform 0.1s;
+          transform-origin: 50% 0;
         }
         .fancy-pants-guy .stick div {
           position: absolute;
@@ -356,7 +402,26 @@ export default function FancyPantsGuy({ floors, selectedFloor, onFloorChange }: 
           0%, 100% { transform: rotate(0deg); }
           50% { transform: rotate(120deg); }
         }
+        
+        .lift-controls {
+            transition: opacity 0.2s;
+        }
+        .lift-arrow {
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
       `}</style>
+
+      {/* Lift Controls Indicator */}
+      <div className="lift-controls absolute -top-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 opacity-0 pointer-events-none">
+          <div className="bg-white/90 border-2 border-black rounded px-2 py-1 shadow-sm">
+             <div className="lift-arrow text-black font-bold text-lg leading-none">↑</div>
+             <div className="lift-arrow text-black font-bold text-lg leading-none" style={{ animationDelay: '0.5s' }}>↓</div>
+          </div>
+      </div>
 
       <div className="stick is-idle">
         <div className="head"></div>

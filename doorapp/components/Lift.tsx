@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface LiftProps {
@@ -11,55 +10,18 @@ interface LiftProps {
 }
 
 /**
- * Lift Component
- * 
- * Displays an animated lift car that moves between floors.
- * 
- * Key fixes implemented:
- * - Floor positioning: Floor 1 = index 0 (bottom), Floor 20 = index 19 (top)
- * - Formula: floorIndex * FLOOR_HEIGHT positions from bottom
- * - During movement: Up = 60% from bottom, Down = 40% from bottom
- * - Smooth Framer Motion animation with 0.8s cubic-bezier transition
- * - Lift height = 80% of floor height for proper proportion
+ * Hand-Drawn Lift Component
  */
 export default function Lift({ currentFloor, totalFloors, isMoving, direction }: LiftProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
   const FLOOR_HEIGHT = 450;
-  const LIFT_HEIGHT = FLOOR_HEIGHT * 0.8; // 80% of floor height
+  const LIFT_HEIGHT = FLOOR_HEIGHT * 0.8; 
   
-  // Calculate position from bottom - floor 1 is at bottom (index 0), floor 20 is at top (index 19)
-  const floorIndex = currentFloor - 1; // Floor 1 = index 0, Floor 2 = index 1, etc.
-  // Align lift bottom with floor line
+  const floorIndex = currentFloor - 1;
   const targetPosition = floorIndex * FLOOR_HEIGHT;
-
-  useEffect(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw rough/sketchy border
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([5, 3]);
-        
-        // Draw imperfect rectangle
-        ctx.beginPath();
-        ctx.moveTo(2, 2);
-        ctx.lineTo(canvas.width - 2, 3);
-        ctx.lineTo(canvas.width - 1, canvas.height - 2);
-        ctx.lineTo(1, canvas.height - 2);
-        ctx.closePath();
-        ctx.stroke();
-      }
-    }
-  }, []);
 
   return (
     <motion.div
-      className="lift-car absolute left-2 right-2 rounded"
+      className="absolute left-2 right-2 z-10"
       style={{
         height: `${LIFT_HEIGHT}px`,
       }}
@@ -69,38 +31,74 @@ export default function Lift({ currentFloor, totalFloors, isMoving, direction }:
       }}
       transition={{
         duration: 0.8,
-        ease: [0.4, 0, 0.2, 1], // cubic-bezier for smooth motion
+        ease: [0.4, 0, 0.2, 1],
       }}
     >
-      <canvas
-        ref={canvasRef}
-        width={160}
-        height={LIFT_HEIGHT}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-        }}
-      />
+      {/* Hand-drawn Box SVG Container */}
+      <svg 
+        width="100%" 
+        height="100%" 
+        viewBox="0 0 100 100" 
+        preserveAspectRatio="none"
+        className="absolute inset-0 overflow-visible drop-shadow-md"
+      >
+        {/* Main Box Outline - intentionally slightly messy */}
+        <path 
+          d="M2,2 L98,3 L99,98 L3,97 Z" 
+          fill="white" 
+          stroke="black" 
+          strokeWidth="3" 
+          strokeLinejoin="round"
+        />
+        
+        {/* Inner detail lines/shading */}
+        <path 
+          d="M5,5 L95,6 L94,94 L6,93 Z" 
+          fill="none" 
+          stroke="rgba(0,0,0,0.1)" 
+          strokeWidth="1" 
+        />
+        
+        {/* Cables at top */}
+        <path d="M40,2 L40,-500" stroke="black" strokeWidth="2" />
+        <path d="M60,2 L60,-500" stroke="black" strokeWidth="2" />
+      </svg>
 
-      {/* Lift windows */}
-      <div className="grid grid-cols-2 gap-2 p-4 h-full relative z-10">
-        <div className="bg-pastel-yellow/30 border border-black rounded"></div>
-        <div className="bg-pastel-yellow/30 border border-black rounded"></div>
-        <div className="bg-pastel-yellow/30 border border-black rounded"></div>
-        <div className="bg-pastel-yellow/30 border border-black rounded"></div>
-      </div>
-      
-      {/* Floor indicator */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black text-white px-3 py-1 rounded text-sm font-bold z-10">
-        {isMoving && direction === 'up' && '↑ '}
-        {isMoving && direction === 'down' && '↓ '}
-        {currentFloor}
+      {/* Lift Content */}
+      <div className="relative h-full w-full p-4 flex flex-col items-center justify-center">
+        
+        {/* Windows */}
+        <div className="w-full h-1/2 grid grid-cols-2 gap-3 mb-4">
+          {[0, 1, 2, 3].map((i) => (
+             <div key={i} className="relative">
+                <svg width="100%" height="100%" viewBox="0 0 40 40" preserveAspectRatio="none">
+                  <path 
+                     d="M2,2 L38,3 L39,38 L1,37 Z" 
+                     fill="#ffffba" 
+                     fillOpacity="0.5" 
+                     stroke="black" 
+                     strokeWidth="2"
+                  />
+                  {/* Reflection mark */}
+                  <path d="M10,10 L15,25" stroke="rgba(255,255,255,0.8)" strokeWidth="2" />
+                </svg>
+             </div>
+          ))}
+        </div>
+
+        {/* Floor Indicator Display */}
+        <div className="relative">
+             <svg width="60" height="30" viewBox="0 0 60 30" className="absolute -inset-2">
+                 <path d="M0,0 L60,2 L58,28 L2,30 Z" fill="black" />
+             </svg>
+             <div className="relative z-10 text-white font-bold text-xl flex items-center justify-center gap-1 font-mono">
+                {isMoving && direction === 'up' && <span className="animate-bounce">↑</span>}
+                {isMoving && direction === 'down' && <span className="animate-bounce">↓</span>}
+                <span>{String(currentFloor).padStart(2, '0')}</span>
+             </div>
+        </div>
+
       </div>
     </motion.div>
   );
 }
-

@@ -23,23 +23,47 @@ export default function LiftShaft({
   return (
     <div className="lift-shaft-container">
       {/* Spacer to match door grid header */}
-      <div className="bg-light-gray border-b-2 border-black" style={{ height: '70px', flexShrink: 0 }}></div>
+      <div className="bg-transparent" style={{ height: '70px', flexShrink: 0, borderBottom: '3px solid black' }}>
+         <div className="w-full h-full flex items-center justify-center">
+             <span className="font-bold text-2xl rotate-2">LIFT</span>
+         </div>
+      </div>
 
-      {/* Lift shaft inner - matches total floor height */}
-      <div className="lift-shaft-inner relative bg-medium-gray/20" style={{ height: `${totalHeight}px`, minHeight: `${totalHeight}px` }}>
-        {/* Floor level markers aligned with floor rows */}
+      {/* Lift shaft inner */}
+      <div className="lift-shaft-inner relative" style={{ height: `${totalHeight}px`, minHeight: `${totalHeight}px` }}>
+        
+        {/* Vertical Guide Rails (Hand drawn lines) */}
+        <div className="absolute inset-y-0 left-4 w-1 bg-black/10" style={{ borderRadius: '2px' }}></div>
+        <div className="absolute inset-y-0 right-4 w-1 bg-black/10" style={{ borderRadius: '2px' }}></div>
+
+        {/* Floor markers */}
         {floors.map((floor, index) => {
-          // Floor 1 is at index 0 (bottom), Floor 20 is at index 19 (top)
           const fromBottom = index * FLOOR_HEIGHT;
           return (
             <div
               key={floor}
-              className="absolute left-0 right-0 flex items-center justify-center border-b border-black/20"
-              style={{ bottom: `${fromBottom}px`, height: '2px' }}
+              className="absolute left-0 right-0 flex items-center justify-center"
+              style={{ bottom: `${fromBottom}px`, height: '0px' }}
             >
-              <span className="absolute left-2 bottom-2 text-xs font-bold text-dark-gray bg-white/80 px-1 rounded">
-                {String(floor).padStart(2, '0')}
-              </span>
+              {/* Floor Line Scribble */}
+              <div className="w-full h-px bg-black/20 relative">
+                 <svg 
+                    className="absolute bottom-0 left-0 w-full h-3 opacity-30" 
+                    preserveAspectRatio="none"
+                    viewBox="0 0 100 5"
+                 >
+                    <path d="M0,2 Q25,5 50,2 T100,2" stroke="black" strokeWidth="1" fill="none" />
+                 </svg>
+              </div>
+
+              {/* Floor Number Tag */}
+              <div className="absolute left-2 bottom-2 z-0">
+                  <div className="relative bg-white border-2 border-black px-2 py-1 rotate-[-2deg] shadow-sm rounded-sm">
+                    <span className="text-sm font-bold text-black font-mono">
+                        {String(floor).padStart(2, '0')}
+                    </span>
+                  </div>
+              </div>
             </div>
           );
         })}
@@ -55,11 +79,11 @@ export default function LiftShaft({
         )}
       </div>
 
-      {/* Floor Picker Button - fixed to viewport but full-width in shaft */}
+      {/* Floor Picker Button */}
       <div className="fixed bottom-4 z-50" style={{ left: '2rem', width: '180px' }}>
         <button
           onClick={onOpenFloorPicker}
-          className="floor-picker-btn w-full py-3 px-4 rounded-lg font-bold text-sm transition-all shadow-lg"
+          className="floor-picker-btn w-full py-3 px-4 shadow-lg text-lg"
         >
           Select Floor
         </button>
@@ -67,4 +91,3 @@ export default function LiftShaft({
     </div>
   );
 }
-
