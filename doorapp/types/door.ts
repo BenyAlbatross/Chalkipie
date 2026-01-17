@@ -17,6 +17,19 @@ export interface Door {
 }
 
 /**
+ * Door version data including all processed variations
+ */
+export interface DoorVersion {
+  roomId: string;
+  originalUrl: string;
+  prettifyUrl?: string;
+  uglifyUrl?: string;
+  sloppifyText?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
  * Academic term combines year and semester for filtering
  */
 export interface AcademicTerm {

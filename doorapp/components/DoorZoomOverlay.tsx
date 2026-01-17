@@ -4,6 +4,8 @@ import { Door } from '@/types/door';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDoorState, DoorView } from '@/contexts/DoorStateContext';
+import DoorActionButtons from './DoorActionButtons';
 
 interface DoorZoomOverlayProps {
   door: Door;
@@ -22,9 +24,53 @@ export default function DoorZoomOverlay({
   hasPrevious,
   hasNext 
 }: DoorZoomOverlayProps) {
-  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const roomNumber = `${String(door.floor).padStart(2, '0')}-${String(door.doorNumber % 1000).padStart(3, '0')}`;
+  const { getDoorState, initializeDoor, fetchDoorVersion, setCurrentView } = useDoorState();
+  
+  // Initialize door state when component mounts
+  useEffect(() => {
+    initializeDoor(roomNumber, door.imageUrl);
+  }, [roomNumber, door.imageUrl, initializeDoor]);
 
-  // Close on Escape key
+  const doorState = getDoorState(roomNumber);
+  const currentView = doorState?.currentView || 'doorchalk';
+  const isLoading = doorState?.loading || false;
+
+  // Handle view change
+  const handleViewChange = async (view: DoorView) => {
+    if (view === currentView || !doorState) return;
+
+    // Fetch the version if not already cached
+    if (view === 'prettify' && !doorState.prettifyImage) {
+      await fetchDoorVersion(roomNumber, 'prettify');
+    } else if (view === 'uglify' && !doorState.uglifyImage) {
+      await fetchDoorVersion(roomNumber, 'uglify');
+    } else if (view === 'sloppify' && !doorState.sloppifyText) {
+      await fetchDoorVersion(roomNumber, 'sloppify');
+    }
+
+    // Update current view
+    setCurrentView(roomNumber, view);
+  };
+
+  // Get the current image URL based on view
+  const getCurrentImageUrl = (): string => {
+    if (!doorState) return door.imageUrl;
+
+    switch (currentView) {
+      case 'prettify':
+        return doorState.prettifyImage || door.imageUrl;
+      case 'uglify':
+        return doorState.uglifyImage || door.imageUrl;
+      case 'doorchalk':
+      default:
+        return doorState.doorchalk;
+    }
+  };
+
+  const currentImageUrl = getCurrentImageUrl();
+  const showSloppifyText = currentView === 'sloppify' && doorState?.sloppifyText;
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -55,15 +101,6 @@ export default function DoorZoomOverlay({
       document.body.style.overflow = 'auto';
     };
   }, []);
-
-  const handleAction = (action: string) => {
-    setSelectedAction(action);
-    // Placeholder for future backend integration
-    console.log(`Action: ${action} on door ${door.id}`);
-    setTimeout(() => setSelectedAction(null), 1000);
-  };
-
-  const roomNumber = `${String(door.floor).padStart(2, '0')}-${String(door.doorNumber % 1000).padStart(3, '0')}`;
 
   return (
     <AnimatePresence>
@@ -103,13 +140,13 @@ export default function DoorZoomOverlay({
           </button>
         )}
 
-        {/* Zoomed Door Content */}
+        {/* Zoomed Door Content - Centered and Scaled */}
         <motion.div
-          className="relative z-10 max-w-3xl w-full mx-8"
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.5, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          className="relative z-10 max-w-4xl w-full mx-8"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1.15, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 180, damping: 22 }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close button */}
@@ -135,50 +172,71 @@ export default function DoorZoomOverlay({
             </div>
 
             {/* Door Image */}
-            <div className="relative w-full aspect-[3/4] bg-light-gray">
-              <Image
-                src={door.imageUrl}
-                alt={`Room ${roomNumber}`}
-                fill
-                className="object-contain"
-                sizes="(max-width: 768px) 100vw, 768px"
-                priority
-              />
+            <div className="relative w-full aspect-[3/4] bg-light-gray overflow-hidden">
+              {/* Image Crossfade Animation */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentImageUrl}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute inset-0"
+                >
+                  <Image
+                    src={currentImageUrl}
+                    alt={`Room ${roomNumber}`}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 100vw, 768px"
+                    priority
+                  />
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Sloppify Text Overlay */}
+              {showSloppifyText && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                  className="absolute inset-0 bg-black/80 flex items-center justify-center p-8"
+                >
+                  <div className="text-white text-center max-w-md">
+                    <p className="text-xl leading-relaxed" style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}>
+                      {doorState?.sloppifyText}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Error Message */}
+              {doorState?.error && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute top-4 left-4 right-4 bg-pastel-pink border-2 border-black rounded-lg px-4 py-2 shadow-lg"
+                >
+                  <p className="text-sm font-medium text-black" style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}>
+                    ⚠️ {doorState.error}
+                  </p>
+                </motion.div>
+              )}
             </div>
 
             {/* Action Buttons */}
             <div className="p-6 bg-white border-t-3 border-black">
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={() => handleAction('beautify')}
-                  className="px-8 py-4 bg-pastel-pink border-3 border-black rounded-lg font-bold text-lg hover:scale-105 transition-transform shadow-md focus:outline-none focus:ring-4 focus:ring-pastel-yellow disabled:opacity-50"
-                  style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
-                  disabled={selectedAction !== null}
-                >
-                  {selectedAction === 'beautify' ? '✨ Beautifying...' : '✨ Beautify'}
-                </button>
-
-                <button
-                  onClick={() => handleAction('uglify')}
-                  className="px-8 py-4 bg-pastel-green border-3 border-black rounded-lg font-bold text-lg hover:scale-105 transition-transform shadow-md focus:outline-none focus:ring-4 focus:ring-pastel-yellow disabled:opacity-50"
-                  style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
-                  disabled={selectedAction !== null}
-                >
-                  {selectedAction === 'uglify' ? '👹 Uglifying...' : '👹 Uglify'}
-                </button>
-
-                <button
-                  onClick={() => handleAction('sloppify')}
-                  className="px-8 py-4 bg-gray-400 border-3 border-black rounded-lg font-bold text-lg hover:scale-105 transition-transform shadow-md focus:outline-none focus:ring-4 focus:ring-pastel-yellow disabled:opacity-50"
-                  style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}
-                  disabled={selectedAction !== null}
-                >
-                  {selectedAction === 'sloppify' ? '🌀 Sloppifying...' : '🌀 Sloppify'}
-                </button>
-              </div>
+              <DoorActionButtons
+                currentView={currentView}
+                onViewChange={handleViewChange}
+                isLoading={isLoading}
+                hasError={!!doorState?.error}
+              />
 
               {/* Metadata */}
               <div className="grid grid-cols-2 gap-4 mt-6 p-4 bg-light-gray rounded-lg border-2 border-black" style={{ fontFamily: 'var(--font-geist-sans), sans-serif' }}>
+
                 <div>
                   <p className="text-sm text-dark-gray font-medium">Academic Year</p>
                   <p className="font-bold text-black text-lg">AY{door.academicYear}</p>

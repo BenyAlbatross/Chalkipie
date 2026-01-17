@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { uploadDoorImageAll } from '@/lib/uploadHandler';
 
 interface ImageUploaderProps {
   doorId?: string;
@@ -55,30 +56,25 @@ export default function ImageUploader({
     setUploadStatus('idle');
     setErrorMessage('');
 
-    const formData = new FormData();
-    formData.append('image', selectedImage);
-    formData.append('style', style);
-    formData.append('semester', formatSemesterCode(academicYear, semester));
-    formData.append('id', doorId);
-
     try {
-      const response = await fetch('/api/chalk', {
-        method: 'POST',
-        body: formData,
+      // Upload to all three endpoints (prettify, uglify, sloppify)
+      const results = await uploadDoorImageAll(selectedImage, {
+        roomId: doorId,
+        metadata: {
+          style,
+          semester: formatSemesterCode(academicYear, semester)
+        }
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Upload failed');
-      }
-
+      // Use the first result's original URL as the main upload URL
+      const mainResult = results[0];
+      
       setUploadStatus('success');
-      setUploadedUrl(data.url);
-      console.log('Upload successful:', data.url);
+      setUploadedUrl(mainResult.originalUrl);
+      console.log('Upload successful to all endpoints:', results);
       
       if (onUploadSuccess) {
-        onUploadSuccess(data.url);
+        onUploadSuccess(mainResult.originalUrl);
       }
     } catch (error) {
       console.error('Upload error:', error);
