@@ -268,7 +268,6 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
                       if (currentIndex < sortedFloors.length - 1) {
                           const nextFloor = sortedFloors[currentIndex + 1];
                           // Trigger floor change via prop - let the useEffect handle the transition setup
-                          isManualTransition.current = true;
                           onFloorChange(nextFloor);
                       }
                       k.jumpPressed = false; 
@@ -277,7 +276,6 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
                       const currentIndex = sortedFloors.indexOf(s.currentFloor);
                       if (currentIndex > 0) {
                           const prevFloor = sortedFloors[currentIndex - 1];
-                          isManualTransition.current = true;
                           onFloorChange(prevFloor);
                       }
                       k.downPressed = false;
