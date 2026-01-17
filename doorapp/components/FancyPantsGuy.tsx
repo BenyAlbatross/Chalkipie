@@ -394,9 +394,8 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
         const container = characterRef.current.closest('.hotel-facade');
         if (container) {
             const containerWidth = container.clientWidth;
-            // Add LiftShaft width (180px) to s.x because character is in the second flex item relative to scroll container
-            const absoluteCharX = s.x + 180; 
-            const targetScrollX = absoluteCharX - (containerWidth / 2) + (CHARACTER_WIDTH / 2);
+            // Removed LiftShaft offset as requested
+            const targetScrollX = s.x - (containerWidth / 2) + (CHARACTER_WIDTH / 2);
             
             if (targetScrollX > 0 && Math.abs(container.scrollLeft - targetScrollX) > 5) {
                 container.scrollLeft += (targetScrollX - container.scrollLeft) * 0.1;
