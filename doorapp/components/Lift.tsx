@@ -30,7 +30,8 @@ export default function Lift({ currentFloor, totalFloors, isMoving, direction }:
   
   // Calculate position from bottom - floor 1 is at bottom (index 0), floor 20 is at top (index 19)
   const floorIndex = currentFloor - 1; // Floor 1 = index 0, Floor 2 = index 1, etc.
-  const targetPosition = floorIndex * FLOOR_HEIGHT + (FLOOR_HEIGHT - LIFT_HEIGHT) / 2;
+  // Align lift bottom with floor line
+  const targetPosition = floorIndex * FLOOR_HEIGHT;
 
   useEffect(() => {
     if (canvasRef.current) {

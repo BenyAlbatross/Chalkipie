@@ -47,14 +47,14 @@ const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
         {/* Floor header on top-left */}
         <div 
           ref={headerRef}
-          className="absolute left-16 top-8 text-3xl font-bold text-black px-4 py-2"
-          style={{ fontFamily: 'Roboto, sans-serif', zIndex: 20 }}
+          className="absolute left-16 top-12 text-4xl font-medium text-black px-4 py-2"
+          style={{ fontFamily: 'var(--font-geist-sans), sans-serif', fontWeight: 500, zIndex: 20 }}
         >
           Level {String(floor).padStart(2, '0')}
         </div>
         
         {/* Doors aligned to bottom with spacing - always 20 doors */}
-        <div className="flex gap-10 px-16">
+        <div className="flex gap-16 px-16">
           {Array.from({ length: 20 }, (_, index) => {
             const door = doors[index];
             if (door) {
