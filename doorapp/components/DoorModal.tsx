@@ -1,5 +1,7 @@
 'use client';
 
+'use client';
+
 import { Door } from '@/types/door';
 import Image from 'next/image';
 import { useEffect } from 'react';

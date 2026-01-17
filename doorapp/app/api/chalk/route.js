@@ -13,8 +13,9 @@ export async function POST(request) {
     const file = formData.get('image');
     const style = formData.get('style'); 
     const semester = formData.get('semester');
+    const id = formData.get('id'); // level + unit number
 
-    // 1. Upload to Storage (Using a timestamp for uniqueness since no user_id)
+    // 1. Upload to Storage
     const fileName = `public/${Date.now()}-${file.name}`;
     const { data: uploadData, error: storageError } = await supabase.storage
       .from('chalk-images')
@@ -27,16 +28,17 @@ export async function POST(request) {
       .from('chalk-images')
       .getPublicUrl(fileName);
 
-    // 3. Insert metadata
+    // 3. Insert metadata matching the new schema
     const { error: dbError } = await supabase
       .from('door_chalks')
       .insert({
-        image_url: publicUrl,
-        style_type: style,
-        semester: semester
+        id: id,
+        original_url: publicUrl,
+        processed_url: publicUrl, // Default to same for now
+        style: style,
+        semester: semester,
+        status: 'completed'
       });
-
-    if (dbError) throw dbError;
 
     return NextResponse.json({ success: true, url: publicUrl });
   } catch (error) {
