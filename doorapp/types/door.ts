@@ -17,6 +17,17 @@ export interface Door {
 }
 
 /**
+ * Response from /extract endpoint
+ * Contains all door representations in a single call
+ */
+export interface ExtractResponse {
+  chalkImage: string;      // Original chalk image (default view)
+  prettifyImage?: string;  // Beautified version
+  uglifyImage?: string;    // Uglified version
+  sloppifyText?: string;   // Text description
+}
+
+/**
  * Academic term combines year and semester for filtering
  */
 export interface AcademicTerm {

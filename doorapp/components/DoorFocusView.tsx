@@ -30,6 +30,19 @@ export default function DoorFocusView({
   // Default to standard door size (160x280) so it's visible immediately
   const [doorPosition, setDoorPosition] = useState({ x: 0, y: 0, width: 160, height: 280 });
 
+  // Measure door element position and size
+  useEffect(() => {
+    if (doorElement) {
+      const rect = doorElement.getBoundingClientRect();
+      setDoorPosition({
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  }, [doorElement]);
+
   // ... (Keep existing useEffects)
 
   // Calculate centered position - bottom of door at 50vh
@@ -108,10 +121,9 @@ export default function DoorFocusView({
           <div 
             className="relative bg-[#fdfbf7] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] pointer-events-auto overflow-hidden transition-all duration-300 border-4 border-black"
             style={{ 
-              width: isUploading ? '550px' : `${doorPosition.width * 1.5}px`,
-              height: isUploading ? 'auto' : `${doorPosition.height * 1.5}px`,
-              minHeight: isUploading ? '400px' : 'auto',
-              borderRadius: '2px 4px 2px 4px' // Slightly irregular box
+              width: isUploading ? '500px' : `${Math.max(doorPosition.width * 1.5, 320)}px`,
+              height: isUploading ? 'auto' : `${Math.max(doorPosition.height * 1.5, 480)}px`,
+              minHeight: isUploading ? '400px' : '480px',
             }}
           >
             {isUploading ? (
