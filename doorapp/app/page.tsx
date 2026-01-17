@@ -7,27 +7,78 @@ import DoorModal from '@/components/DoorModal';
 import FloorPickerModal from '@/components/FloorPickerModal';
 import AcademicTermSelector from '@/components/AcademicTermSelector';
 import { 
-  getAvailableTerms, 
-  getAvailableFloorsForTerm,
-  getDoorsForTermAndFloor 
-} from '@/lib/mockData';
+  fetchAvailableTerms, 
+  fetchDoorsForTerm
+} from '@/lib/api';
 import { Door, AcademicTerm } from '@/types/door';
 
 export default function Home() {
-  const availableTerms = useMemo(() => getAvailableTerms(), []);
+  const [availableTerms, setAvailableTerms] = useState<AcademicTerm[]>([]);
+  const [selectedTerm, setSelectedTerm] = useState<AcademicTerm | null>(null);
+  const [doors, setDoors] = useState<Door[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [selectedTerm, setSelectedTerm] = useState<AcademicTerm>(
-    availableTerms[0]
-  );
+  // Fetch terms on mount
+  useEffect(() => {
+    async function loadTerms() {
+      try {
+        const terms = await fetchAvailableTerms();
+        setAvailableTerms(terms);
+        if (terms.length > 0) {
+          setSelectedTerm(terms[0]);
+        }
+      } catch (error) {
+        console.error("Failed to load terms", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadTerms();
+  }, []);
 
-  const availableFloors = useMemo(
-    () => getAvailableFloorsForTerm(selectedTerm),
-    [selectedTerm]
-  );
+  // Fetch doors when selectedTerm changes
+  useEffect(() => {
+    if (!selectedTerm) {
+        setDoors([]);
+        return;
+    }
+    
+    async function loadDoors() {
+      setIsLoading(true);
+      try {
+        const fetchedDoors = await fetchDoorsForTerm(selectedTerm);
+        setDoors(fetchedDoors);
+      } catch (error) {
+        console.error("Failed to load doors", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadDoors();
+  }, [selectedTerm]);
 
-  const [selectedFloor, setSelectedFloor] = useState<number | null>(
-    availableFloors[0] ?? null
-  );
+  const availableFloors = useMemo(() => {
+    const floors = new Set<number>();
+    doors.forEach(door => floors.add(door.floor));
+    return Array.from(floors).sort((a, b) => a - b);
+  }, [doors]);
+
+  const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
+
+  // Update selectedFloor when availableFloors changes (e.g. after data fetch)
+  useEffect(() => {
+    if (availableFloors.length > 0) {
+        // If no floor selected, or current selection is not in available floors (though we might want to keep it if possible?)
+        // The original behavior was to reset to the first floor on term change.
+        // We detect if we need to set a default floor.
+        if (selectedFloor === null || !availableFloors.includes(selectedFloor)) {
+            setSelectedFloor(availableFloors[0]);
+        }
+    } else {
+        setSelectedFloor(null);
+    }
+  }, [availableFloors, selectedFloor]);
+
 
   const [previousFloor, setPreviousFloor] = useState<number | null>(null);
   const [isLiftMoving, setIsLiftMoving] = useState(false);
@@ -40,18 +91,22 @@ export default function Home() {
     const doorsMap: { [floor: number]: Door[] } = {};
     
     availableFloors.forEach(floor => {
-      doorsMap[floor] = getDoorsForTermAndFloor(selectedTerm, floor);
+      doorsMap[floor] = doors.filter(d => d.floor === floor);
     });
     
     return doorsMap;
-  }, [selectedTerm, availableFloors]);
+  }, [doors, availableFloors]);
 
   const [selectedDoor, setSelectedDoor] = useState<Door | null>(null);
 
   const handleTermChange = (term: AcademicTerm) => {
+    if (selectedTerm?.academicYear === term.academicYear && selectedTerm?.semester === term.semester) return;
+    
+    setIsLoading(true);
+    setDoors([]);
     setSelectedTerm(term);
-    const newAvailableFloors = getAvailableFloorsForTerm(term);
-    setSelectedFloor(newAvailableFloors[0] ?? null);
+    // Reset selection triggers effect to pick first floor when data arrives
+    setSelectedFloor(null); 
   };
 
   const handleFloorSelect = (floor: number) => {
@@ -102,15 +157,21 @@ export default function Home() {
     setSelectedDoor(null);
   };
 
+  if (!selectedTerm && isLoading) {
+      return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen">
       {/* Fixed Header - independent of scrolling */}
       <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b-2 border-black shadow-md">
-        <AcademicTermSelector
-          terms={availableTerms}
-          selectedTerm={selectedTerm}
-          onTermChange={handleTermChange}
-        />
+        {selectedTerm && (
+            <AcademicTermSelector
+            terms={availableTerms}
+            selectedTerm={selectedTerm}
+            onTermChange={handleTermChange}
+            />
+        )}
       </div>
 
       {/* Main content area */}
@@ -157,7 +218,7 @@ export default function Home() {
         ) : (
           <div className="text-center py-16 px-4">
             <p className="text-dark-gray text-lg font-medium">
-              No floors available for this term
+              {isLoading ? "Loading floors..." : "No floors available for this term"}
             </p>
           </div>
         )}
