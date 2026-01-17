@@ -45,6 +45,9 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
     lastScrollUpdate: 0,
     smoothScrollY: 0,
     smoothScrollX: 0,
+    liftStartY: 0,
+    liftTargetY: 0,
+    liftStartTime: 0,
   });
   
   // Track if the floor change was initiated by the character (jumping/falling)
@@ -383,35 +386,6 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
                 // This should match the frame.
                 window.scrollTo({ top: targetScrollY, behavior: 'auto' });
             }
-        }
-        
-        if (shouldUpdateScroll) {
-          s.lastScrollUpdate = now;
-          
-          const absoluteCharY = containerOffsetRef.current + s.y + (CHARACTER_HEIGHT / 2);
-          const targetScrollY = absoluteCharY - (window.innerHeight / 2);
-          
-          // Smooth interpolation for vertical scroll
-          s.smoothScrollY += (targetScrollY - s.smoothScrollY) * 0.15;
-          
-          if (Math.abs(window.scrollY - s.smoothScrollY) > 3) {
-            window.scrollTo({ top: s.smoothScrollY, behavior: 'auto' });
-          }
-          
-          const container = characterRef.current.closest('.hotel-facade');
-          if (container) {
-            const containerWidth = container.clientWidth;
-            const targetScrollX = s.x - (containerWidth / 2) + (CHARACTER_WIDTH / 2);
-            
-            // Smooth interpolation for horizontal scroll
-            s.smoothScrollX += (targetScrollX - s.smoothScrollX) * 0.12;
-            
-            if (s.smoothScrollX > 0 && Math.abs(container.scrollLeft - s.smoothScrollX) > 3) {
-              container.scrollLeft = s.smoothScrollX;
-            } else if (s.smoothScrollX <= 0) {
-              container.scrollLeft = 0;
-            }
-          }
         }
 
         const stick = stickRef.current;

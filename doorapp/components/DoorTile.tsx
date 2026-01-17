@@ -121,6 +121,4 @@ export default function DoorTile({ door, onClick, doorRef }: DoorTileProps) {
       </div>
     </div>
   );
-});
-
-export default DoorTile;
+}

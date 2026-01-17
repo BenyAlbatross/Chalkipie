@@ -13,7 +13,7 @@ interface FloorRowProps {
   onDoorRef?: (doorId: string, el: HTMLButtonElement | null) => void;
 }
 
-const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
+const FloorRow = memo(forwardRef<HTMLDivElement, FloorRowProps>(
   ({ floor, doors, onDoorClick, isActive = false, onDoorRef }, ref) => {
     const headerRef = useRef<HTMLDivElement>(null);
     const rowRef = useRef<HTMLDivElement>(null);
@@ -28,8 +28,7 @@ const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
           padding: 12,
         });
         annotation.show();
-        return () => a
-        nnotation.remove();
+        return () => annotation.remove();
       }
     }, [isHovered, isActive]);
 
