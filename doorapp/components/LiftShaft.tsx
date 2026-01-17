@@ -22,16 +22,7 @@ export default function LiftShaft({
   
   return (
     <div className="lift-shaft-container">
-      {/* Elevator header - sticky at top of shaft - compact */}
-      <div className="bg-light-gray border-b-3 border-black text-black text-center sticky top-24 z-10" style={{ height: '70px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '8px 12px' }}>
-        <div className="text-xs uppercase tracking-wider font-medium">Lift</div>
-        <div className="text-lg">⬍⬍⬍</div>
-        {selectedFloor && (
-          <div className="text-xs font-bold mt-1 text-black">
-            Floor {String(selectedFloor).padStart(2, '0')}
-          </div>
-        )}
-      </div>
+      
 
       {/* Lift shaft inner - matches total floor height */}
       <div className="lift-shaft-inner relative bg-medium-gray/20" style={{ height: `${totalHeight}px`, minHeight: `${totalHeight}px` }}>
@@ -63,19 +54,14 @@ export default function LiftShaft({
         )}
       </div>
 
-      {/* Floor Picker Button at bottom - fixed to viewport */}
-      <div className="fixed bottom-4 left-4 bg-light-gray border-2 border-black px-4 py-4 rounded-lg shadow-lg z-50" style={{ width: '172px' }}>
+      {/* Floor Picker Button - fixed to viewport but full-width in shaft */}
+      <div className="fixed bottom-4 z-50" style={{ left: '2rem', width: '180px' }}>
         <button
           onClick={onOpenFloorPicker}
-          className="floor-picker-btn w-full py-3 px-4 rounded-lg font-bold text-sm transition-all"
+          className="floor-picker-btn w-full py-3 px-4 rounded-lg font-bold text-sm transition-all shadow-lg"
         >
           Select Floor
         </button>
-        {selectedFloor && (
-          <div className="text-center mt-2 text-xs text-dark-gray">
-            Floor {selectedFloor}
-          </div>
-        )}
       </div>
     </div>
   );

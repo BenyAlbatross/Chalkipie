@@ -24,10 +24,25 @@ export default function DoorTile({ door, onClick }: DoorTileProps) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
       
-      // Draw rough rectangle border
-      rc.rectangle(2, 2, canvas.width - 4, canvas.height - 4, {
+      // Draw rough border without bottom edge - draw top, left, and right lines
+      // Top line
+      rc.line(2, 2, canvas.width - 2, 2, {
         stroke: '#000000',
-        strokeWidth: 2,
+        strokeWidth: 1.5,
+        roughness: 1.5,
+        bowing: 1,
+      });
+      // Left line
+      rc.line(2, 2, 2, canvas.height - 2, {
+        stroke: '#000000',
+        strokeWidth: 1.5,
+        roughness: 1.5,
+        bowing: 1,
+      });
+      // Right line
+      rc.line(canvas.width - 2, 2, canvas.width - 2, canvas.height - 2, {
+        stroke: '#000000',
+        strokeWidth: 1.5,
         roughness: 1.5,
         bowing: 1,
       });
@@ -76,12 +91,9 @@ export default function DoorTile({ door, onClick }: DoorTileProps) {
               src={door.imageUrl}
               alt={`Room ${roomNumber}`}
               fill
-              className="object-cover transition-transform duration-300 group-hover:scale-110"
+              className="object-cover transition-all duration-300 group-hover:scale-105"
               sizes="160px"
             />
-
-            {/* Overlay on hover */}
-            <div className="absolute inset-0 bg-gradient-to-b from-pastel-blue/0 via-pastel-blue/0 to-pastel-blue/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
         </div>
 

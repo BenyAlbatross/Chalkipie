@@ -23,7 +23,7 @@ const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
           type: 'circle',
           color: '#a8d8ea',
           strokeWidth: 2,
-          padding: 8,
+          padding: 12,
         });
         annotation.show();
         return () => annotation.remove();
@@ -47,17 +47,29 @@ const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
         {/* Floor header on top-left */}
         <div 
           ref={headerRef}
-          className="absolute left-8 top-4 text-2xl font-bold text-black px-4 py-2"
-          style={{ fontFamily: 'Roboto, sans-serif' }}
+          className="absolute left-16 top-8 text-3xl font-bold text-black px-4 py-2"
+          style={{ fontFamily: 'Roboto, sans-serif', zIndex: 20 }}
         >
           Level {String(floor).padStart(2, '0')}
         </div>
         
-        {/* Doors aligned to bottom with spacing */}
-        <div className="flex gap-10 px-16 pb-6">
-          {doors.map((door) => (
-            <DoorTile key={door.id} door={door} onClick={() => onDoorClick(door)} />
-          ))}
+        {/* Doors aligned to bottom with spacing - always 20 doors */}
+        <div className="flex gap-10 px-16">
+          {Array.from({ length: 20 }, (_, index) => {
+            const door = doors[index];
+            if (door) {
+              return <DoorTile key={door.id} door={door} onClick={() => onDoorClick(door)} />;
+            } else {
+              // Placeholder door
+              return (
+                <div 
+                  key={`placeholder-${floor}-${index}`}
+                  className="flex-shrink-0"
+                  style={{ width: '160px', height: '280px' }}
+                />
+              );
+            }
+          })}
         </div>
       </div>
     );
