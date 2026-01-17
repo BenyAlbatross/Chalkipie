@@ -14,14 +14,16 @@ interface FancyPantsGuyProps {
 const FLOOR_HEIGHT = 450;
 const HEADER_HEIGHT = 70;
 
-const SCALE_FACTOR = 1.8; 
+// Increased scale for larger character
+const SCALE_FACTOR = 2.5; 
 const CHARACTER_WIDTH = 30 * SCALE_FACTOR; 
 const CHARACTER_HEIGHT = 80 * SCALE_FACTOR; 
+// Adjust feet offset to match new height
 const FEET_VISUAL_OFFSET = 62 * SCALE_FACTOR;
 
 const GRAVITY = 1.2;
-const JUMP_FORCE = -28;
-const DOUBLE_JUMP_FORCE = -22;
+const JUMP_FORCE = -30;
+const DOUBLE_JUMP_FORCE = -24;
 const MOVE_SPEED = 12;
 const FRICTION = 0.82;
 const ACCELERATION = 2;
@@ -385,6 +387,21 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
                 // The physics loop runs ~60fps, window.scrollTo 'auto' is instant.
                 // This should match the frame.
                 window.scrollTo({ top: targetScrollY, behavior: 'auto' });
+            }
+        }
+        
+        // Horizontal Scrolling: Follow Fancy Pants Guy
+        const container = characterRef.current.closest('.hotel-facade');
+        if (container) {
+            const containerWidth = container.clientWidth;
+            // Add LiftShaft width (180px) to s.x because character is in the second flex item relative to scroll container
+            const absoluteCharX = s.x + 180; 
+            const targetScrollX = absoluteCharX - (containerWidth / 2) + (CHARACTER_WIDTH / 2);
+            
+            if (targetScrollX > 0 && Math.abs(container.scrollLeft - targetScrollX) > 5) {
+                container.scrollLeft += (targetScrollX - container.scrollLeft) * 0.1;
+            } else if (targetScrollX <= 0) {
+                container.scrollLeft = 0;
             }
         }
 

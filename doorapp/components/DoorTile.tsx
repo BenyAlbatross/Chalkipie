@@ -7,6 +7,7 @@ import { memo } from 'react';
 interface DoorTileProps {
   door: Door;
   onClick: (door: Door) => void;
+  doorRef?: (el: HTMLButtonElement | null) => void;
 }
 
 // Pre-calculated "messy" paths to simulate hand-drawn sketch look
@@ -15,8 +16,7 @@ const FRAME_PASS_1 = "M5,4 L154,6 L157,276 L4,277 L5,4";
 const FRAME_PASS_2 = "M4,5 L157,4 L155,278 L6,275 L4,5";
 const SKETCH_SCRATCH = "M10,8 L150,10 M152,15 L154,270 M150,274 L8,272 M5,270 L7,12";
 
-const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
-  // ...
+const DoorTile = memo(function DoorTile({ door, onClick, doorRef }: DoorTileProps) {
   const roomNumber = `${String(door.floor).padStart(2, '0')}-${String(door.doorNumber % 1000).padStart(3, '0')}`;
 
   return (
@@ -30,7 +30,7 @@ const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
         <button
           ref={doorRef}
           onClick={() => onClick(door)}
-          className="door-tile group relative flex-shrink-0 focus:outline-none transition-all duration-300 hover:scale-105"
+          className="door-tile group relative flex-shrink-0 focus:outline-none"
           style={{
             width: '160px',
             height: '280px',
@@ -102,4 +102,6 @@ const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
       </div>
     </div>
   );
-}
+});
+
+export default DoorTile;
