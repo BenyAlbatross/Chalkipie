@@ -29,6 +29,19 @@ export default function DoorFocusView({
   const [isUploading, setIsUploading] = useState(false);
   const [doorPosition, setDoorPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
+  // Measure door element position and size
+  useEffect(() => {
+    if (doorElement) {
+      const rect = doorElement.getBoundingClientRect();
+      setDoorPosition({
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  }, [doorElement]);
+
   // ... (Keep existing useEffects)
 
   // Calculate centered position - bottom of door at 50vh
@@ -103,9 +116,9 @@ export default function DoorFocusView({
           <div 
             className="relative bg-white shadow-2xl pointer-events-auto rounded-lg overflow-hidden transition-all duration-300"
             style={{ 
-              width: isUploading ? '500px' : `${doorPosition.width * 1.5}px`,
-              height: isUploading ? 'auto' : `${doorPosition.height * 1.5}px`,
-              minHeight: isUploading ? '400px' : 'auto',
+              width: isUploading ? '500px' : `${Math.max(doorPosition.width * 1.5, 320)}px`,
+              height: isUploading ? 'auto' : `${Math.max(doorPosition.height * 1.5, 480)}px`,
+              minHeight: isUploading ? '400px' : '480px',
             }}
           >
             {isUploading ? (

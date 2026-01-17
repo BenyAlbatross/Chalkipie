@@ -117,15 +117,17 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
 
     const poll = async () => {
       try {
+        console.log(`🔄 [Polling] Fetching /scans/${scanId} for room ${roomId}...`);
         const response = await fetch(`https://chalk-pyserver.onrender.com/scans/${scanId}`);
         
         if (!response.ok) {
+          console.error(`❌ [Polling] Failed for ${roomId}: ${response.status} ${response.statusText}`);
           throw new Error(`Polling failed: ${response.statusText}`);
         }
 
         const data: ScanStatusResponse = await response.json();
         
-        console.log(`[Polling] Room ${roomId}, Status: ${data.status}`, data);
+        console.log(`📦 [Polling] Room ${roomId}, Status: ${data.status}`, data);
 
         setDoorStates(prev => {
           const newMap = new Map(prev);
@@ -141,7 +143,7 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
               sloppifyText: data.sloppifyText || existing.sloppifyText,
             };
             
-            console.log(`[Polling] Updated state for ${roomId}:`, updatedState);
+            console.log(`✅ [Polling] Updated state for ${roomId}:`, updatedState);
 
             // Stop polling on completion or failure
             if (data.status === 'completed' || data.status === 'failed') {
@@ -149,6 +151,7 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
               if (interval) {
                 clearInterval(interval);
                 pollingIntervals.current.delete(roomId);
+                console.log(`🎉 [Polling] Complete for ${roomId} - Status: ${data.status}`);
               }
               updatedState.loading = false;
               
@@ -202,6 +205,7 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
    */
   const rehydrateDoor = useCallback(async (roomId: string) => {
     try {
+      console.log(`🔍 [Rehydrate] Checking for existing data for room ${roomId}...`);
       const formData = new FormData();
       formData.append('roomId', roomId);
       // NO image file - backend will return existing data if available
@@ -211,9 +215,12 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
         body: formData,
       });
 
+      console.log(`📡 [Rehydrate] Response status for ${roomId}: ${response.status}`);
+
       if (response.status === 200) {
         // Data exists - populate state
         const data: ExtractResponse = await response.json();
+        console.log(`✅ [Rehydrate] Found existing data for ${roomId}:`, data);
         setDoorStates(prev => {
           const newMap = new Map(prev);
           newMap.set(roomId, {
@@ -229,9 +236,10 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
           });
           return newMap;
         });
+        console.log(`💾 [Rehydrate] State updated for ${roomId}`);
       } else if (response.status === 400) {
         // Room doesn't exist yet - that's fine, user hasn't uploaded
-        console.log(`No existing data for room ${roomId}`);
+        console.log(`⚠️ [Rehydrate] No existing data for room ${roomId}`);
       }
     } catch (error) {
       console.error(`Error rehydrating door ${roomId}:`, error);
@@ -282,15 +290,18 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
         formData.append('semester', semester);
       }
 
+      console.log(`📤 [Extract] Uploading image for room ${roomId}...`);
       const response = await fetch('https://chalk-pyserver.onrender.com/extract', {
         method: 'POST',
         body: formData,
       });
 
       const data: ExtractResponse = await response.json();
+      console.log(`📡 [Extract] Response status ${response.status} for ${roomId}:`, data);
 
       if (response.status === 200) {
         // Immediate completion (cache hit)
+        console.log(`✅ [Extract] Cache hit for ${roomId} - immediate completion`);
         setDoorStates(prev => {
           const newMap = new Map(prev);
           newMap.set(roomId, {
@@ -308,6 +319,7 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
         });
       } else if (response.status === 202) {
         // Async job started - begin polling
+        console.log(`⏳ [Extract] Async job started for ${roomId}, scan_id: ${data.scan_id}`);
         setDoorStates(prev => {
           const newMap = new Map(prev);
           newMap.set(roomId, {
