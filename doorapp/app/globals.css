@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #1e293b;
-  --chalk-primary: #334155;
-  --chalk-secondary: #64748b;
+  --background: #f5f1e8;
+  --foreground: #3e2723;
+  --brown-primary: #795548;
+  --brown-secondary: #a1887f;
+  --brown-accent: #d7ccc8;
+  --warm-beige: #efebe9;
 }
 
 @theme inline {
@@ -14,137 +16,195 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
+  background: linear-gradient(180deg, #f5f1e8 0%, #efebe9 100%);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Courier New', monospace;
 }
 
 /* ========================================
-   HAND-DRAWN / CHALK AESTHETIC STYLES
+   HAND-DRAWN / SKETCHED AESTHETIC
    ======================================== */
 
-/* Chalk text effect - slightly rough, non-uniform */
-.chalk-text {
-  text-rendering: optimizeLegibility;
+/* Sketch text effect */
+.sketch-text {
+  text-rendering: geometricPrecision;
   font-weight: 500;
-  letter-spacing: 0.015em;
-}
-
-.chalk-title {
-  text-rendering: optimizeLegibility;
-  font-weight: 700;
   letter-spacing: 0.02em;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.1);
 }
 
-/* Sketch border effect - imperfect, hand-drawn appearance */
-.sketch-border {
-  border-style: solid;
-  border-image-source: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cpath d='M0,0 Q25,3 50,0 T100,0' stroke='%23334155' fill='none' stroke-width='2'/%3E%3C/svg%3E");
-  filter: blur(0.3px);
+.sketch-title {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.08);
 }
 
-/* Chalk element - for buttons, shapes with rough edges */
-.chalk-element {
-  filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.15));
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* Hand-drawn border effect */
+.hand-drawn-border {
+  position: relative;
 }
 
-.chalk-element:hover {
-  filter: drop-shadow(3px 3px 5px rgba(0, 0, 0, 0.2));
+.hand-drawn-border::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid currentColor;
+  border-radius: inherit;
+  opacity: 0.6;
+  filter: blur(0.5px);
+  pointer-events: none;
 }
 
-/* Lift shaft specific styling */
-.lift-shaft {
-  background: linear-gradient(
-    to right,
-    #f1f5f9 0%,
-    #e2e8f0 50%,
-    #f1f5f9 100%
+/* Lift shaft styling - hand-drawn */
+.sketch-lift {
+  background: linear-gradient(180deg, #8d6e63 0%, #6d4c41 50%, #8d6e63 100%);
+  box-shadow: 
+    inset -4px 0 12px rgba(0, 0, 0, 0.3),
+    4px 0 20px rgba(0, 0, 0, 0.15);
+  border-right: 3px solid #5d4037;
+  position: relative;
+}
+
+.sketch-lift::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 8px,
+    rgba(0, 0, 0, 0.2) 8px,
+    rgba(0, 0, 0, 0.2) 10px
   );
+  pointer-events: none;
+}
+
+/* Floor badge - sketchy style */
+.floor-badge {
   box-shadow: 
-    inset -2px 0 8px rgba(0, 0, 0, 0.1),
-    2px 0 12px rgba(0, 0, 0, 0.05);
+    0 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  position: relative;
 }
 
-.chalk-line {
-  opacity: 0.7;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+.floor-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: inherit;
+  pointer-events: none;
 }
 
-/* Door tile specific effects */
+/* Floor row styling */
+.floor-row {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.1) 0%, 
+    rgba(255, 255, 255, 0.3) 50%, 
+    rgba(255, 255, 255, 0.1) 100%);
+  padding: 1.5rem 0;
+  border-top: 2px dashed rgba(121, 85, 72, 0.2);
+  border-bottom: 2px dashed rgba(121, 85, 72, 0.2);
+}
+
+/* Door tile - door-like rectangular shape */
 .door-tile {
+  background: linear-gradient(135deg, #d7ccc8 0%, #bcaaa4 100%);
+  border: 3px solid #6d4c41;
   box-shadow: 
-    3px 3px 8px rgba(0, 0, 0, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    4px 6px 12px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  position: relative;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Door panel effect */
+.door-panel {
+  position: absolute;
+  inset: 12px;
+  border: 2px solid rgba(109, 76, 65, 0.3);
+  pointer-events: none;
+}
+
+.door-panel::before,
+.door-panel::after {
+  content: '';
+  position: absolute;
+  background: rgba(109, 76, 65, 0.2);
+}
+
+.door-panel::before {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+}
+
+.door-panel::after {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+/* Door hover effect - chalk outline */
 .door-tile:hover {
+  transform: translateY(-4px);
   box-shadow: 
-    5px 5px 20px rgba(0, 0, 0, 0.2),
-    0 0 30px rgba(250, 204, 21, 0.3),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    6px 10px 20px rgba(0, 0, 0, 0.25),
+    0 0 0 4px rgba(121, 85, 72, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  border-color: #5d4037;
 }
 
-/* Chalk glow effect on hover */
-.chalk-glow {
-  background: radial-gradient(
-    circle at center,
-    rgba(250, 204, 21, 0.3) 0%,
-    rgba(250, 204, 21, 0.1) 50%,
-    transparent 100%
-  );
-  animation: subtle-pulse 2s ease-in-out infinite;
+/* Door knob */
+.door-knob {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle, #ffd54f 0%, #ffb300 100%);
+  border: 2px solid #6d4c41;
+  border-radius: 50%;
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-@keyframes subtle-pulse {
+/* Sketchy animations */
+@keyframes sketch-pulse {
   0%, 100% {
-    opacity: 0;
+    opacity: 0.8;
+    transform: scale(1);
   }
   50% {
     opacity: 1;
+    transform: scale(1.05);
   }
 }
 
-/* Button styling with chalk aesthetic */
-.chalk-button {
-  position: relative;
-  overflow: hidden;
-  box-shadow: 
-    2px 2px 4px rgba(0, 0, 0, 0.2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-.chalk-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.chalk-button:hover::before {
-  left: 100%;
+.animate-sketch-pulse {
+  animation: sketch-pulse 2s ease-in-out infinite;
 }
 
 /* Modal animations */
 @keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slide-up {
@@ -160,6 +220,38 @@ body {
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Custom scrollbar - brown theme */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #efebe9;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #8d6e63 0%, #6d4c41 100%);
+  border-radius: 6px;
+  border: 2px solid #efebe9;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7e574f 0%, #5d4037 100%);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sketch-lift {
+    width: 60px;
+  }
 }
 
 .animate-slide-up {

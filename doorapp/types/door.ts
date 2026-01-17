@@ -9,7 +9,18 @@ export interface Door {
   id: string;
   doorNumber: number;
   imageUrl: string;
-  semester: string;
+  academicYear: string;  // e.g., "AY24/25"
+  semester: number;      // 1 or 2
+  floor: number;         // Floor level where door is located
   createdAt: string;
   nameOfOwner: string; // Defaults to "Anonymous"
+}
+
+/**
+ * Academic term combines year and semester for filtering
+ */
+export interface AcademicTerm {
+  academicYear: string;
+  semester: number;
+  displayName: string; // e.g., "AY24/25 Sem 1"
 }

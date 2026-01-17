@@ -1,41 +1,75 @@
-/**
- * LiftShaft Component
- * 
- * Purely visual component representing an elevator shaft or building cross-section.
- * Fixed to the left edge of the viewport with a hand-drawn aesthetic.
- * 
- * FUTURE: Could be enhanced with:
- * - Interactive floor selection
- * - Animated elevator car
- * - Floor navigation functionality
- */
+'use client';
 
-export default function LiftShaft() {
+import { useState } from 'react';
+
+interface LiftShaftProps {
+  floors: number[];
+  selectedFloor: number | null;
+  onFloorClick: (floor: number) => void;
+}
+
+export default function LiftShaft({ floors, selectedFloor, onFloorClick }: LiftShaftProps) {
+  const [hoveredFloor, setHoveredFloor] = useState<number | null>(null);
+
   return (
-    <div className="fixed left-0 top-0 h-screen w-20 bg-slate-100 border-r-4 border-slate-800 flex flex-col items-center py-8 z-10 lift-shaft">
-      {/* Shaft header */}
-      <div className="mb-6 text-center">
-        <div className="w-14 h-14 rounded-full bg-slate-700 border-3 border-slate-900 flex items-center justify-center mb-2 chalk-element">
-          <svg className="w-8 h-8 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-          </svg>
-        </div>
+    <div className="sketch-lift fixed left-0 top-0 bottom-0 w-20 flex flex-col items-center py-8 z-40">
+      {/* Elevator header */}
+      <div className="text-amber-100 text-center mb-8 sketch-title">
+        <div className="text-xs uppercase tracking-wider opacity-70 mb-1">Lift</div>
+        <div className="text-2xl">↕</div>
       </div>
 
-      {/* Floor markers - decorative */}
-      <div className="flex-1 flex flex-col justify-around items-center w-full px-2">
-        {[6, 5, 4, 3, 2, 1].map((floor) => (
-          <div key={floor} className="w-full flex flex-col items-center gap-1">
-            <div className="w-10 h-1 bg-slate-400 rounded-full chalk-line"></div>
-            <span className="text-xs font-bold text-slate-600 chalk-text">{floor}</span>
-          </div>
-        ))}
+      {/* Floor buttons */}
+      <div className="flex-1 flex flex-col-reverse justify-start gap-3 overflow-y-auto w-full px-3">
+        {floors.map((floor) => {
+          const isSelected = selectedFloor === floor;
+          const isHovered = hoveredFloor === floor;
+
+          return (
+            <button
+              key={floor}
+              onClick={() => onFloorClick(floor)}
+              onMouseEnter={() => setHoveredFloor(floor)}
+              onMouseLeave={() => setHoveredFloor(null)}
+              className="relative group"
+            >
+              {/* Floor button */}
+              <div
+                className={`
+                  w-full aspect-square rounded-md font-bold text-sm
+                  transition-all duration-300 flex items-center justify-center
+                  border-2 sketch-text
+                  ${
+                    isSelected
+                      ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-amber-950 scale-110 shadow-lg border-amber-950'
+                      : 'bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 hover:from-amber-200 hover:to-amber-300 hover:scale-105 border-amber-800/40'
+                  }
+                `}
+              >
+                {floor}
+              </div>
+
+              {/* Subtle glow when selected */}
+              {isSelected && (
+                <div className="absolute inset-0 rounded-md bg-amber-400 opacity-30 blur-sm animate-sketch-pulse" />
+              )}
+
+              {/* Tooltip on hover */}
+              {isHovered && (
+                <div className="absolute left-full ml-4 top-1/2 -translate-y-1/2 bg-amber-950 text-amber-50 px-3 py-1.5 rounded-md text-xs whitespace-nowrap pointer-events-none z-50 shadow-xl border-2 border-amber-800">
+                  Floor {floor}
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-[6px] border-transparent border-r-amber-950" />
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Shaft footer - ground level */}
-      <div className="mt-6 text-center">
-        <div className="w-14 h-3 bg-slate-800 rounded-sm chalk-element"></div>
-        <span className="text-xs font-bold text-slate-700 mt-1 block chalk-text">G</span>
+      {/* Elevator indicator */}
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <div className="w-6 h-6 rounded-full bg-amber-400 shadow-md border-2 border-amber-900 animate-sketch-pulse" />
+        <div className="text-amber-100 text-xs opacity-70 sketch-text">Active</div>
       </div>
     </div>
   );
