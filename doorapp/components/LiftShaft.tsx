@@ -22,7 +22,8 @@ export default function LiftShaft({
   
   return (
     <div className="lift-shaft-container">
-      
+      {/* Spacer to match door grid header */}
+      <div className="bg-light-gray border-b-2 border-black" style={{ height: '70px', flexShrink: 0 }}></div>
 
       {/* Lift shaft inner - matches total floor height */}
       <div className="lift-shaft-inner relative bg-medium-gray/20" style={{ height: `${totalHeight}px`, minHeight: `${totalHeight}px` }}>
