@@ -44,9 +44,24 @@ const generateDoorsForFloor = (
 };
 
 export const mockDoors: Door[] = [
-  // AY24/25 Sem 1
+  // AY24/25 Sem 1 - 20 floors
+  ...generateDoorsForFloor("AY24/25", 1, 20, 8, [
+    { doorNumber: 2001, imageUrl: "https://images.unsplash.com/photo-1508666709879-08d4fe5a76e0?w=400&h=600&fit=crop", nameOfOwner: "Alex Chen", createdAt: "2024-08-15T10:30:00Z" },
+  ]),
+  ...generateDoorsForFloor("AY24/25", 1, 19, 10, []),
+  ...generateDoorsForFloor("AY24/25", 1, 18, 12, []),
+  ...generateDoorsForFloor("AY24/25", 1, 17, 10, []),
+  ...generateDoorsForFloor("AY24/25", 1, 16, 8, []),
+  ...generateDoorsForFloor("AY24/25", 1, 15, 12, []),
+  ...generateDoorsForFloor("AY24/25", 1, 14, 15, []),
+  ...generateDoorsForFloor("AY24/25", 1, 13, 10, []),
+  ...generateDoorsForFloor("AY24/25", 1, 12, 8, []),
+  ...generateDoorsForFloor("AY24/25", 1, 11, 12, []),
+  ...generateDoorsForFloor("AY24/25", 1, 10, 15, []),
+  ...generateDoorsForFloor("AY24/25", 1, 9, 10, []),
+  ...generateDoorsForFloor("AY24/25", 1, 8, 12, []),
+  ...generateDoorsForFloor("AY24/25", 1, 7, 14, []),
   ...generateDoorsForFloor("AY24/25", 1, 6, 8, [
-    { doorNumber: 601, imageUrl: "https://images.unsplash.com/photo-1508666709879-08d4fe5a76e0?w=400&h=600&fit=crop", nameOfOwner: "Alex Chen", createdAt: "2024-08-15T10:30:00Z" },
     { doorNumber: 602, imageUrl: "https://images.unsplash.com/photo-1506792006437-256b665541e2?w=400&h=600&fit=crop", nameOfOwner: "Sarah Lim", createdAt: "2024-08-16T14:20:00Z" },
   ]),
   ...generateDoorsForFloor("AY24/25", 1, 5, 12, [
@@ -74,7 +89,21 @@ export const mockDoors: Door[] = [
     { doorNumber: 103, imageUrl: "https://images.unsplash.com/photo-1517630800677-932d836ab680?w=400&h=600&fit=crop", nameOfOwner: "Maya Singh", createdAt: "2024-08-30T09:15:00Z" },
   ]),
 
-  // AY24/25 Sem 2
+  // AY24/25 Sem 2 - 20 floors
+  ...generateDoorsForFloor("AY24/25", 2, 20, 6, []),
+  ...generateDoorsForFloor("AY24/25", 2, 19, 8, []),
+  ...generateDoorsForFloor("AY24/25", 2, 18, 10, []),
+  ...generateDoorsForFloor("AY24/25", 2, 17, 8, []),
+  ...generateDoorsForFloor("AY24/25", 2, 16, 6, []),
+  ...generateDoorsForFloor("AY24/25", 2, 15, 10, []),
+  ...generateDoorsForFloor("AY24/25", 2, 14, 12, []),
+  ...generateDoorsForFloor("AY24/25", 2, 13, 8, []),
+  ...generateDoorsForFloor("AY24/25", 2, 12, 10, []),
+  ...generateDoorsForFloor("AY24/25", 2, 11, 10, []),
+  ...generateDoorsForFloor("AY24/25", 2, 10, 12, []),
+  ...generateDoorsForFloor("AY24/25", 2, 9, 8, []),
+  ...generateDoorsForFloor("AY24/25", 2, 8, 10, []),
+  ...generateDoorsForFloor("AY24/25", 2, 7, 12, []),
   ...generateDoorsForFloor("AY24/25", 2, 6, 6, [
     { doorNumber: 601, imageUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=600&fit=crop", nameOfOwner: "Michael Tan", createdAt: "2025-01-10T11:45:00Z" },
   ]),

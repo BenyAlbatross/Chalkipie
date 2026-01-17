@@ -1,76 +1,83 @@
 'use client';
 
-import { useState } from 'react';
+import Lift from './Lift';
 
 interface LiftShaftProps {
   floors: number[];
   selectedFloor: number | null;
-  onFloorClick: (floor: number) => void;
+  onOpenFloorPicker: () => void;
+  isMoving: boolean;
+  direction: 'up' | 'down' | 'idle';
 }
 
-export default function LiftShaft({ floors, selectedFloor, onFloorClick }: LiftShaftProps) {
-  const [hoveredFloor, setHoveredFloor] = useState<number | null>(null);
-
+export default function LiftShaft({ 
+  floors, 
+  selectedFloor, 
+  onOpenFloorPicker,
+  isMoving,
+  direction 
+}: LiftShaftProps) {
+  const FLOOR_HEIGHT = 450;
+  const totalHeight = floors.length * FLOOR_HEIGHT;
+  
   return (
-    <div className="sketch-lift fixed left-0 top-0 bottom-0 w-20 flex flex-col items-center py-8 z-40">
-      {/* Elevator header */}
-      <div className="text-amber-100 text-center mb-8 sketch-title">
-        <div className="text-xs uppercase tracking-wider opacity-70 mb-1">Lift</div>
-        <div className="text-2xl">↕</div>
+    <div className="lift-shaft-container">
+      {/* Elevator header - sticky at top of shaft */}
+      <div className="bg-light-gray border-b-3 border-black text-black text-center py-4 px-4 sticky top-24 z-10">
+        <div className="text-sm uppercase tracking-wider mb-2 font-medium">Lift</div>
+        <div className="text-2xl">⬍⬍⬍</div>
+        {selectedFloor && (
+          <div className="text-xs font-bold mt-2 text-black">
+            Floor {String(selectedFloor).padStart(2, '0')}
+          </div>
+        )}
       </div>
 
-      {/* Floor buttons */}
-      <div className="flex-1 flex flex-col-reverse justify-start gap-3 overflow-y-auto w-full px-3">
-        {floors.map((floor) => {
-          const isSelected = selectedFloor === floor;
-          const isHovered = hoveredFloor === floor;
-
+      {/* Lift shaft inner - matches total floor height */}
+      <div className="lift-shaft-inner relative bg-medium-gray/20" style={{ height: `${totalHeight}px`, minHeight: `${totalHeight}px` }}>
+        {/* Floor level markers aligned with floor rows */}
+        {floors.map((floor, index) => {
+          // Floor 1 is at index 0 (bottom), Floor 20 is at index 19 (top)
+          const fromBottom = index * FLOOR_HEIGHT;
           return (
-            <button
+            <div
               key={floor}
-              onClick={() => onFloorClick(floor)}
-              onMouseEnter={() => setHoveredFloor(floor)}
-              onMouseLeave={() => setHoveredFloor(null)}
-              className="relative group"
+              className="absolute left-0 right-0 flex items-center justify-center border-b border-black/20"
+              style={{ bottom: `${fromBottom}px`, height: '2px' }}
             >
-              {/* Floor button */}
-              <div
-                className={`
-                  w-full aspect-square rounded-md font-bold text-sm
-                  transition-all duration-300 flex items-center justify-center
-                  border-2 sketch-text
-                  ${
-                    isSelected
-                      ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-amber-950 scale-110 shadow-lg border-amber-950'
-                      : 'bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 hover:from-amber-200 hover:to-amber-300 hover:scale-105 border-amber-800/40'
-                  }
-                `}
-              >
-                {floor}
-              </div>
-
-              {/* Subtle glow when selected */}
-              {isSelected && (
-                <div className="absolute inset-0 rounded-md bg-amber-400 opacity-30 blur-sm animate-sketch-pulse" />
-              )}
-
-              {/* Tooltip on hover */}
-              {isHovered && (
-                <div className="absolute left-full ml-4 top-1/2 -translate-y-1/2 bg-amber-950 text-amber-50 px-3 py-1.5 rounded-md text-xs whitespace-nowrap pointer-events-none z-50 shadow-xl border-2 border-amber-800">
-                  Floor {floor}
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-[6px] border-transparent border-r-amber-950" />
-                </div>
-              )}
-            </button>
+              <span className="absolute left-2 bottom-2 text-xs font-bold text-dark-gray bg-white/80 px-1 rounded">
+                {String(floor).padStart(2, '0')}
+              </span>
+            </div>
           );
         })}
+        
+        {/* Animated lift car */}
+        {selectedFloor && (
+          <Lift 
+            currentFloor={selectedFloor} 
+            totalFloors={floors.length}
+            isMoving={isMoving}
+            direction={direction}
+          />
+        )}
       </div>
 
-      {/* Elevator indicator */}
-      <div className="mt-6 flex flex-col items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-amber-400 shadow-md border-2 border-amber-900 animate-sketch-pulse" />
-        <div className="text-amber-100 text-xs opacity-70 sketch-text">Active</div>
+      {/* Floor Picker Button at bottom - fixed to viewport */}
+      <div className="fixed bottom-4 left-4 bg-light-gray border-2 border-black px-4 py-4 rounded-lg shadow-lg z-50" style={{ width: '172px' }}>
+        <button
+          onClick={onOpenFloorPicker}
+          className="floor-picker-btn w-full py-3 px-4 rounded-lg font-bold text-sm transition-all"
+        >
+          Select Floor
+        </button>
+        {selectedFloor && (
+          <div className="text-center mt-2 text-xs text-dark-gray">
+            Floor {selectedFloor}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

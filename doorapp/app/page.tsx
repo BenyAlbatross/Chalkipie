@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import LiftShaft from '@/components/LiftShaft';
 import FloorRow from '@/components/FloorRow';
 import DoorModal from '@/components/DoorModal';
+import FloorPickerModal from '@/components/FloorPickerModal';
 import AcademicTermSelector from '@/components/AcademicTermSelector';
 import { 
   getAvailableTerms, 
@@ -28,6 +29,11 @@ export default function Home() {
     availableFloors[0] ?? null
   );
 
+  const [previousFloor, setPreviousFloor] = useState<number | null>(null);
+  const [isLiftMoving, setIsLiftMoving] = useState(false);
+  const [liftDirection, setLiftDirection] = useState<'up' | 'down' | 'idle'>('idle');
+  const [showFloorPicker, setShowFloorPicker] = useState(false);
+
   const floorRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   const doorsByFloor = useMemo(() => {
@@ -48,36 +54,47 @@ export default function Home() {
     setSelectedFloor(newAvailableFloors[0] ?? null);
   };
 
-  const handleFloorClick = (floor: number) => {
-    setSelectedFloor(floor);
-    const floorElement = floorRefs.current[floor];
-    if (floorElement) {
-      floorElement.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start' 
-      });
+  const handleFloorSelect = (floor: number) => {
+    if (selectedFloor === null) {
+      setSelectedFloor(floor);
+      return;
     }
+
+    // Clamp floor to valid range
+    const clampedFloor = Math.max(1, Math.min(20, floor));
+    
+    // Determine direction
+    const direction = clampedFloor > selectedFloor ? 'up' : clampedFloor < selectedFloor ? 'down' : 'idle';
+    
+    setPreviousFloor(selectedFloor);
+    setLiftDirection(direction);
+    setIsLiftMoving(true);
+
+    // Start viewport scroll immediately with lift animation
+    const floorElement = floorRefs.current[clampedFloor];
+    if (floorElement) {
+      setTimeout(() => {
+        const floorRect = floorElement.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const absoluteFloorTop = floorRect.top + window.scrollY;
+        
+        // Center the floor in the viewport with slower scroll
+        const targetScrollPosition = absoluteFloorTop - (viewportHeight / 2) + (floorRect.height / 2);
+        
+        window.scrollTo({
+          top: targetScrollPosition,
+          behavior: 'smooth'
+        });
+      }, 100); // Small delay to start scroll with lift movement
+    }
+
+    // Complete lift movement
+    setTimeout(() => {
+      setSelectedFloor(clampedFloor);
+      setIsLiftMoving(false);
+      setLiftDirection('idle');
+    }, 800); // Match transition duration
   };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + 100;
-      
-      for (const floor of availableFloors) {
-        const element = floorRefs.current[floor];
-        if (element) {
-          const { offsetTop, offsetHeight } = element;
-          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
-            setSelectedFloor(floor);
-            break;
-          }
-        }
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [availableFloors]);
 
   const handleDoorClick = (door: Door) => {
     setSelectedDoor(door);
@@ -89,8 +106,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Academic term selector - top bar */}
-      <div className="fixed top-0 left-0 right-0 z-30">
+      {/* Fixed Header - independent of scrolling */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b-2 border-black shadow-md">
         <AcademicTermSelector
           terms={availableTerms}
           selectedTerm={selectedTerm}
@@ -98,53 +115,77 @@ export default function Home() {
         />
       </div>
 
-      {/* Fixed lift shaft on the left */}
-      <LiftShaft 
-        floors={availableFloors}
-        selectedFloor={selectedFloor}
-        onFloorClick={handleFloorClick}
-      />
-
-      {/* Main content area - offset by lift shaft width and top bar */}
-      <main className="ml-20 pt-20 min-h-screen pb-16">
+      {/* Main content area */}
+      <main className="pt-24 min-h-screen">
         {/* Page header */}
-        <div className="w-full px-6 py-8 mb-6">
+        <div className="px-8 py-6 mb-8">
           <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-amber-950 mb-3 tracking-tight sketch-title">
-              📖 Door Gallery
+            <h1 className="text-5xl md:text-6xl font-bold text-black mb-4 tracking-tight">
+              🏨 Hotel Sketch
             </h1>
-            <p className="text-amber-800 text-base md:text-lg font-semibold sketch-text">
-              {selectedTerm.displayName} · {availableFloors.length} {availableFloors.length === 1 ? 'Floor' : 'Floors'}
+            <p className="text-dark-gray text-lg font-medium">
+              {selectedTerm.displayName}
             </p>
-            <p className="text-amber-700 text-sm mt-2 sketch-text">
-              Click any door to view · Use the lift to navigate floors
+            <p className="text-gray-600 text-sm mt-2">
+              {availableFloors.length} {availableFloors.length === 1 ? 'Floor' : 'Floors'} · Click any window to view details
             </p>
           </div>
         </div>
 
-        {/* Floor rows - displayed from highest to lowest */}
+        {/* Hotel facade - lift and doors scroll together */}
         {availableFloors.length > 0 ? (
-          <div className="space-y-6">
-            {[...availableFloors].sort((a, b) => b - a).map((floor) => (
-              <FloorRow
-                key={floor}
-                ref={(el) => {
-                  floorRefs.current[floor] = el;
-                }}
-                floor={floor}
-                doors={doorsByFloor[floor] || []}
-                onDoorClick={handleDoorClick}
-              />
-            ))}
+          <div className="px-8 mb-8">
+            <div className="hotel-facade rounded-lg overflow-x-auto">
+              <div className="flex gap-0 min-w-max">
+                {/* Lift shaft - scrolls with doors */}
+                <LiftShaft 
+                  floors={availableFloors}
+                  selectedFloor={selectedFloor}
+                  onOpenFloorPicker={() => setShowFloorPicker(true)}
+                  isMoving={isLiftMoving}
+                  direction={liftDirection}
+                />
+
+                {/* Door grid - scrolls with lift */}
+                <div className="flex-1">
+                  {/* Spacer to match lift shaft header height */}
+                  <div className="bg-white border-b-2 border-black" style={{ height: '80px' }}></div>
+                  
+                  <div className="flex flex-col-reverse">
+                    {availableFloors.map((floor) => (
+                      <FloorRow
+                        key={floor}
+                        ref={(el) => {
+                          floorRefs.current[floor] = el;
+                        }}
+                        floor={floor}
+                        doors={doorsByFloor[floor] || []}
+                        onDoorClick={handleDoorClick}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="text-center py-16 px-4">
-            <p className="text-amber-700 text-lg sketch-text">
+            <p className="text-dark-gray text-lg font-medium">
               No floors available for this term
             </p>
           </div>
         )}
       </main>
+
+      {/* Floor Picker Modal */}
+      {showFloorPicker && (
+        <FloorPickerModal
+          floors={availableFloors}
+          currentFloor={selectedFloor}
+          onSelectFloor={handleFloorSelect}
+          onClose={() => setShowFloorPicker(false)}
+        />
+      )}
 
       {/* Door modal overlay */}
       {selectedDoor && (
