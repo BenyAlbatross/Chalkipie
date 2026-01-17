@@ -2,7 +2,7 @@
 
 import { Door } from '@/types/door';
 import DoorTile from './DoorTile';
-import { forwardRef, useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState, memo } from 'react';
 import { annotate } from 'rough-notation';
 
 interface FloorRowProps {
@@ -12,7 +12,7 @@ interface FloorRowProps {
   isActive?: boolean;
 }
 
-const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
+const FloorRow = memo(forwardRef<HTMLDivElement, FloorRowProps>(
   ({ floor, doors, onDoorClick, isActive = false }, ref) => {
     const headerRef = useRef<HTMLDivElement>(null);
     const rowRef = useRef<HTMLDivElement>(null);
@@ -75,7 +75,7 @@ const FloorRow = forwardRef<HTMLDivElement, FloorRowProps>(
       </div>
     );
   }
-);
+));
 
 FloorRow.displayName = 'FloorRow';
 

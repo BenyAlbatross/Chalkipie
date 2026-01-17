@@ -45,6 +45,7 @@ export default function Home() {
     }
     
     async function loadDoors() {
+      if (!selectedTerm) return;
       setIsLoading(true);
       try {
         const fetchedDoors = await fetchDoorsForTerm(selectedTerm);
@@ -65,6 +66,11 @@ export default function Home() {
   }, [doors]);
 
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
+  const [previousFloor, setPreviousFloor] = useState<number | null>(null);
+  const [isLiftMoving, setIsLiftMoving] = useState(false);
+  const [liftDirection, setLiftDirection] = useState<'up' | 'down' | 'idle'>('idle');
+  const [showFloorPicker, setShowFloorPicker] = useState(false);
+  const floorRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   // Update selectedFloor when availableFloors changes (e.g. after data fetch)
   useEffect(() => {
@@ -80,13 +86,6 @@ export default function Home() {
     }
   }, [availableFloors, selectedFloor]);
 
-
-  const [previousFloor, setPreviousFloor] = useState<number | null>(null);
-  const [isLiftMoving, setIsLiftMoving] = useState(false);
-  const [liftDirection, setLiftDirection] = useState<'up' | 'down' | 'idle'>('idle');
-  const [showFloorPicker, setShowFloorPicker] = useState(false);
-
-  const floorRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   const doorsByFloor = useMemo(() => {
     const doorsMap: { [floor: number]: Door[] } = {};
@@ -129,25 +128,10 @@ export default function Home() {
     setLiftDirection(direction);
     setIsLiftMoving(true);
 
-    // Start viewport scroll immediately with lift animation
-    const floorElement = floorRefs.current[floor];
-    if (floorElement) {
-      const floorRect = floorElement.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const absoluteFloorTop = floorRect.top + window.scrollY;
-      
-      // Center the floor in the viewport with slower scroll
-      const targetScrollPosition = absoluteFloorTop - (viewportHeight / 2) + (floorRect.height / 2);
-      
-      window.scrollTo({
-        top: targetScrollPosition,
-        behavior: 'smooth'
-      });
-    }
+    setSelectedFloor(floor);
 
     // Complete lift movement
     setTimeout(() => {
-      setSelectedFloor(floor);
       setIsLiftMoving(false);
       setLiftDirection('idle');
     }, 800); // Match transition duration

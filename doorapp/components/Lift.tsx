@@ -19,15 +19,20 @@ export default function Lift({ currentFloor, totalFloors, isMoving, direction }:
   const floorIndex = currentFloor - 1;
   const targetPosition = floorIndex * FLOOR_HEIGHT;
 
+  // Use negative translateY to move UP from bottom: 0
+  const targetY = -targetPosition;
+
   return (
     <motion.div
       className="absolute left-2 right-2 z-10"
       style={{
         height: `${LIFT_HEIGHT}px`,
+        bottom: 0, // Anchor to bottom
+        willChange: 'transform', // Hint for browser optimization
       }}
-      initial={{ bottom: `${targetPosition}px` }}
+      initial={{ y: targetY }}
       animate={{
-        bottom: `${targetPosition}px`,
+        y: targetY,
       }}
       transition={{
         duration: 0.8,
@@ -40,7 +45,7 @@ export default function Lift({ currentFloor, totalFloors, isMoving, direction }:
         height="100%" 
         viewBox="0 0 100 100" 
         preserveAspectRatio="none"
-        className="absolute inset-0 overflow-visible drop-shadow-md"
+        className="absolute inset-0 overflow-visible" // Removed drop-shadow-md
       >
         {/* Main Box Outline - intentionally slightly messy */}
         <path 

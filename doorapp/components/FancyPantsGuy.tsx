@@ -41,7 +41,13 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
     lastFloorChangeTime: 0,
     isRiding: false, 
     visible: true,
+    liftStartY: 0,
+    liftTargetY: 0,
+    liftStartTime: 0,
   });
+  
+  // Track if the floor change was initiated by the character (jumping/falling)
+  const isManualTransition = useRef(false);
 
   const keys = useRef({
     left: false, right: false, up: false, down: false, jumpPressed: false, downPressed: false
@@ -51,6 +57,33 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
   const stickRef = useRef<HTMLElement | null>(null);
   const containerOffsetRef = useRef<number>(0);
   const containerWidthRef = useRef<number>(5000);
+
+  // Cubic Bezier (0.4, 0, 0.2, 1) solver for accurate sync
+  const cubicBezier = (t: number, p1x: number, p1y: number, p2x: number, p2y: number) => {
+      const cx = 3 * p1x;
+      const bx = 3 * (p2x - p1x) - cx;
+      const ax = 1 - cx - bx;
+      const cy = 3 * p1y;
+      const by = 3 * (p2y - p1y) - cy;
+      const ay = 1 - cy - by;
+      
+      const sampleCurveX = (t: number) => ((ax * t + bx) * t + cx) * t;
+      const sampleCurveY = (t: number) => ((ay * t + by) * t + cy) * t;
+      const sampleCurveDerivativeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx;
+
+      // Solve for x = t using Newton-Raphson
+      let x = t;
+      for (let i = 0; i < 8; i++) {
+          const x2 = sampleCurveX(x) - t;
+          if (Math.abs(x2) < 1e-5) return sampleCurveY(x);
+          const d2 = sampleCurveDerivativeX(x);
+          if (Math.abs(d2) < 1e-5) break;
+          x = x - x2 / d2;
+      }
+      return sampleCurveY(x);
+  };
+  
+  const materialEase = (t: number) => cubicBezier(t, 0.4, 0, 0.2, 1);
 
   // Init environment
   useEffect(() => {
@@ -77,39 +110,72 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
 
   // Init Position & Arrival sync
   useEffect(() => {
-    if (!isLiftMoving && selectedFloor !== null) {
+    if (selectedFloor !== null) {
       const sortedFloors = [...floors].sort((a, b) => a - b);
       const index = sortedFloors.indexOf(selectedFloor);
+      
       if (index !== -1) {
         const floorIndexFromTop = sortedFloors.length - 1 - index;
         const groundY = HEADER_HEIGHT + (floorIndexFromTop + 1) * FLOOR_HEIGHT;
         
         if (state.current.currentFloor === -1) {
+             // Initial spawn
              state.current.x = 200;
              state.current.y = groundY - FEET_VISUAL_OFFSET;
              state.current.currentFloor = selectedFloor;
              state.current.isGrounded = true;
              state.current.visible = true;
-        } else if (state.current.isRiding) {
-             state.current.y = groundY - FEET_VISUAL_OFFSET;
-             state.current.vy = 0;
-             state.current.isGrounded = true;
-             state.current.currentFloor = selectedFloor;
+        } else if (isLiftMoving) {
+             // Lift started moving to a new floor
              
-             const buffer = 550; 
-             setTimeout(() => {
-                 state.current.isRiding = false;
-                 state.current.visible = true;
-             }, buffer);
+             // Check if this was a manual jump/fall transition
+             if (isManualTransition.current) {
+                 // Character is moving physically, DO NOT board the lift.
+                 // Just update the logical floor so he knows where he is landing.
+                 state.current.currentFloor = selectedFloor;
+             } else {
+                 // Page/UI selection -> Force Boarding
+                 // If we are already riding (jumped in), keep riding.
+                 // FORCE BOARDING: If NOT riding and outside shaft (UI selection), snap in.
+                 if (!state.current.isRiding) {
+                     state.current.isRiding = true;
+                     state.current.visible = false;
+                     
+                     // Only snap if outside
+                     if (state.current.x >= -20) {
+                         state.current.x = -80; 
+                     }
+                 }
+                 
+                 state.current.liftStartY = state.current.y;
+                 state.current.liftTargetY = groundY - FEET_VISUAL_OFFSET;
+                 state.current.liftStartTime = Date.now();
+                 state.current.currentFloor = selectedFloor;
+             }
         } else {
-             state.current.currentFloor = selectedFloor;
+             // Lift finished moving
+             isManualTransition.current = false; // Reset flag
+             
+             // Lift finished moving or external update
+             if (state.current.isRiding) {
+                 // Ensure we snap to exact position at end
+                 state.current.y = groundY - FEET_VISUAL_OFFSET;
+                 state.current.vy = 0;
+                 state.current.isGrounded = true;
+                 
+                 // Small buffer before showing guy again to allow physics to stabilize
+                 setTimeout(() => {
+                     state.current.isRiding = false;
+                     state.current.visible = true;
+                     // Keep him in shaft but grounded
+                     state.current.x = -80; 
+                 }, 100);
+             } else {
+                 // Just update floor logical tracking
+                 state.current.currentFloor = selectedFloor;
+             }
         }
       }
-    } else if (isLiftMoving) {
-        if (state.current.x < -20) {
-            state.current.isRiding = true;
-            state.current.visible = false;
-        }
     }
   }, [selectedFloor, floors, isLiftMoving]);
 
@@ -160,119 +226,162 @@ export default function FancyPantsGuy({ floors, doorsByFloor, selectedFloor, onF
           }
       }
 
-      // PHYSICS FREEZE
+      // PHYSICS FREEZE / LIFT ANIMATION
       if (s.isRiding) {
-           animationFrameId = requestAnimationFrame(update);
-           return;
-      }
-
-      // PHYSICS
-      if (k.left) { s.vx -= ACCELERATION; s.facingRight = false; }
-      if (k.right) { s.vx += ACCELERATION; s.facingRight = true; }
-      
-      s.vx = Math.max(Math.min(s.vx, MOVE_SPEED), -MOVE_SPEED);
-      if (!k.left && !k.right) s.vx *= FRICTION; else s.vx *= 0.95;
-      if (Math.abs(s.vx) < 0.1) s.vx = 0;
-
-      // CONTROLS
-      if (isInLiftShaft) {
-          if (now - s.lastFloorChangeTime > 500) { 
-              if (k.jumpPressed) {
-                  const sortedFloors = [...floors].sort((a, b) => a - b);
-                  const currentIndex = sortedFloors.indexOf(s.currentFloor);
-                  if (currentIndex < sortedFloors.length - 1) {
-                      const nextFloor = sortedFloors[currentIndex + 1];
-                      s.lastFloorChangeTime = now;
-                      s.isRiding = true; 
-                      s.visible = false;
-                      onFloorChange(nextFloor);
-                  }
-                  k.jumpPressed = false; 
-              } else if (k.downPressed) {
-                  const sortedFloors = [...floors].sort((a, b) => a - b);
-                  const currentIndex = sortedFloors.indexOf(s.currentFloor);
-                  if (currentIndex > 0) {
-                      const prevFloor = sortedFloors[currentIndex - 1];
-                      s.lastFloorChangeTime = now;
-                      s.isRiding = true; 
-                      s.visible = false;
-                      onFloorChange(prevFloor);
-                  }
-                  k.downPressed = false;
-              }
-          }
+           // Smoothly center X position to -80 instead of hard lock
+           s.x += (-80 - s.x) * 0.1;
+           s.vx = 0;
+           
+           if (s.liftStartTime > 0) {
+               const elapsed = now - s.liftStartTime;
+               const duration = 800; // Match Lift transition
+               
+               if (elapsed < duration) {
+                   const progress = elapsed / duration;
+                   // Use approximated bezier or ease
+                   const ease = materialEase(progress); 
+                   s.y = s.liftStartY + (s.liftTargetY - s.liftStartY) * ease;
+               } else {
+                   s.y = s.liftTargetY;
+               }
+           }
+           // Continue to render loop to update camera
       } else {
-          if (k.jumpPressed) {
-            if (s.isGrounded) { s.vy = JUMP_FORCE; s.isGrounded = false; s.jumps = 1; }
-            else if (s.jumps < 2) { s.vy = DOUBLE_JUMP_FORCE; s.jumps = 2; }
-            k.jumpPressed = false; 
-          }
-          if (k.down && s.isGrounded) { s.ignoreCollisionTimer = 10; s.isGrounded = false; s.vy = 8; }
-          k.downPressed = false;
+          // PHYSICS (Normal)
+          if (k.left) { s.vx -= ACCELERATION; s.facingRight = false; }
+          if (k.right) { s.vx += ACCELERATION; s.facingRight = true; }
+          
+          s.vx = Math.max(Math.min(s.vx, MOVE_SPEED), -MOVE_SPEED);
+          if (!k.left && !k.right) s.vx *= FRICTION; else s.vx *= 0.95;
+          if (Math.abs(s.vx) < 0.1) s.vx = 0;
+
+          // ... (Rest of controls and physics) ...
       }
 
-      s.vy += GRAVITY;
-      s.x += s.vx;
-      s.y += s.vy;
+      if (!s.isRiding) {
+          // CONTROLS
+          if (isInLiftShaft) {
+              if (now - s.lastFloorChangeTime > 500) { 
+                  if (k.jumpPressed) {
+                      const sortedFloors = [...floors].sort((a, b) => a - b);
+                      const currentIndex = sortedFloors.indexOf(s.currentFloor);
+                      if (currentIndex < sortedFloors.length - 1) {
+                          const nextFloor = sortedFloors[currentIndex + 1];
+                          // Trigger floor change via prop - let the useEffect handle the transition setup
+                          isManualTransition.current = true;
+                          onFloorChange(nextFloor);
+                      }
+                      k.jumpPressed = false; 
+                  } else if (k.downPressed) {
+                      const sortedFloors = [...floors].sort((a, b) => a - b);
+                      const currentIndex = sortedFloors.indexOf(s.currentFloor);
+                      if (currentIndex > 0) {
+                          const prevFloor = sortedFloors[currentIndex - 1];
+                          isManualTransition.current = true;
+                          onFloorChange(prevFloor);
+                      }
+                      k.downPressed = false;
+                  }
+              }
+          } else {
+              if (k.jumpPressed) {
+                if (s.isGrounded) { s.vy = JUMP_FORCE; s.isGrounded = false; s.jumps = 1; }
+                else if (s.jumps < 2) { s.vy = DOUBLE_JUMP_FORCE; s.jumps = 2; }
+                k.jumpPressed = false; 
+              }
+              if (k.down && s.isGrounded) { s.ignoreCollisionTimer = 10; s.isGrounded = false; s.vy = 8; }
+              k.downPressed = false;
+          }
 
-      // BOUNDARIES
-      if (s.x < -140) { s.x = -140; s.vx = 0; }
-      const maxRight = containerWidthRef.current - CHARACTER_WIDTH - 20;
-      if (s.x > maxRight) { s.x = maxRight; s.vx = 0; }
+          s.vy += GRAVITY;
+          s.x += s.vx;
+          s.y += s.vy;
+      }
 
-      const minY = 0; 
-      if (s.y < minY) { s.y = minY; s.vy = 0; }
-      const totalLevelHeight = HEADER_HEIGHT + (floors.length * FLOOR_HEIGHT);
-      const hardFloorY = totalLevelHeight - FEET_VISUAL_OFFSET;
-      if (s.y > hardFloorY) { s.y = hardFloorY; s.vy = 0; s.isGrounded = true; s.jumps = 0; }
-      
-      // COLLISION
-      if (s.ignoreCollisionTimer > 0) {
-        s.ignoreCollisionTimer--;
-      } else if (s.vy >= 0) { 
-        const feetY = s.y + FEET_VISUAL_OFFSET;
-        const relativeFeetY = feetY - HEADER_HEIGHT;
-        const prevRelativeFeetY = (feetY - s.vy) - HEADER_HEIGHT;
-        const nextFloorLineRelative = Math.ceil(prevRelativeFeetY / FLOOR_HEIGHT) * FLOOR_HEIGHT;
-        const maxRelativeLine = floors.length * FLOOR_HEIGHT;
+      // BOUNDARIES & COLLISION (Only when not riding)
+      if (!s.isRiding) {
+          if (s.x < -140) { s.x = -140; s.vx = 0; }
+          const maxRight = containerWidthRef.current - CHARACTER_WIDTH - 20;
+          if (s.x > maxRight) { s.x = maxRight; s.vx = 0; }
 
-        if (nextFloorLineRelative <= maxRelativeLine) {
-            if (prevRelativeFeetY <= nextFloorLineRelative && relativeFeetY >= nextFloorLineRelative) {
-            s.y = nextFloorLineRelative + HEADER_HEIGHT - FEET_VISUAL_OFFSET;
-            s.vy = 0;
-            s.isGrounded = true;
-            s.jumps = 0;
+          const minY = 0; 
+          if (s.y < minY) { s.y = minY; s.vy = 0; }
+          const totalLevelHeight = HEADER_HEIGHT + (floors.length * FLOOR_HEIGHT);
+          const hardFloorY = totalLevelHeight - FEET_VISUAL_OFFSET;
+          if (s.y > hardFloorY) { s.y = hardFloorY; s.vy = 0; s.isGrounded = true; s.jumps = 0; }
+          
+          // COLLISION
+          if (s.ignoreCollisionTimer > 0) {
+            s.ignoreCollisionTimer--;
+          } else if (s.vy >= 0) { 
+            const feetY = s.y + FEET_VISUAL_OFFSET;
+            const relativeFeetY = feetY - HEADER_HEIGHT;
+            const prevRelativeFeetY = (feetY - s.vy) - HEADER_HEIGHT;
+            const nextFloorLineRelative = Math.ceil(prevRelativeFeetY / FLOOR_HEIGHT) * FLOOR_HEIGHT;
+            const maxRelativeLine = floors.length * FLOOR_HEIGHT;
 
-            const sortedFloors = [...floors].sort((a, b) => a - b);
-            const indexFromTop = Math.round(nextFloorLineRelative / FLOOR_HEIGHT); 
-            const rowIndex = Math.max(0, indexFromTop - 1);
-            
-            if (rowIndex < sortedFloors.length) {
-                const landedFloor = sortedFloors[sortedFloors.length - 1 - rowIndex];
-                if (landedFloor !== s.currentFloor && landedFloor) {
-                    if (!isInLiftShaft) {
-                        onFloorChange(landedFloor);
-                    } else {
-                        s.currentFloor = landedFloor;
+            if (nextFloorLineRelative <= maxRelativeLine) {
+                if (prevRelativeFeetY <= nextFloorLineRelative && relativeFeetY >= nextFloorLineRelative) {
+                s.y = nextFloorLineRelative + HEADER_HEIGHT - FEET_VISUAL_OFFSET;
+                s.vy = 0;
+                s.isGrounded = true;
+                s.jumps = 0;
+
+                const sortedFloors = [...floors].sort((a, b) => a - b);
+                const indexFromTop = Math.round(nextFloorLineRelative / FLOOR_HEIGHT); 
+                const rowIndex = Math.max(0, indexFromTop - 1);
+                
+                if (rowIndex < sortedFloors.length) {
+                    const landedFloor = sortedFloors[sortedFloors.length - 1 - rowIndex];
+                    if (landedFloor !== s.currentFloor && landedFloor) {
+                        if (!isInLiftShaft) {
+                            isManualTransition.current = true;
+                            onFloorChange(landedFloor);
+                            // Optimistically update currentFloor to prevent spamming onFloorChange
+                            // while waiting for React to update the prop
+                            s.currentFloor = landedFloor;
+                        } else {
+                            s.currentFloor = landedFloor;
+                        }
                     }
                 }
+                } else {
+                    s.isGrounded = false;
+                }
             }
-            } else {
-                s.isGrounded = false;
-            }
-        }
-      } else {
-        s.isGrounded = false;
+          } else {
+            s.isGrounded = false;
+          }
       }
       
       // RENDER
       if (characterRef.current) {
         characterRef.current.style.transform = `translate(${s.x}px, ${s.y}px)`;
         
-        const absoluteCharY = containerOffsetRef.current + s.y + (CHARACTER_HEIGHT / 2);
-        const targetScrollY = absoluteCharY - (window.innerHeight / 2);
-        if (Math.abs(window.scrollY - targetScrollY) > 2) {
-             window.scrollTo({ top: targetScrollY, behavior: 'auto' });
+        // Vertical Scrolling: Center on Fancy Pants Guy
+        // Allow tracking when riding (s.isRiding)
+        // We removed !isLiftMoving check to rely on s.isRiding logic
+        if (s.visible || s.isRiding) { 
+            const absoluteCharY = containerOffsetRef.current + s.y + (CHARACTER_HEIGHT / 2);
+            const headerHeight = 96; 
+            const viewportHeight = window.innerHeight;
+            
+            // The center of the visible area is half-way between the header bottom and viewport bottom
+            // CHANGE THIS VALUE to adjust character screen position:
+            // Positive = Character is LOWER on screen
+            // Negative = Character is HIGHER on screen
+            const verticalScreenBias = 100; 
+            
+            const visibleCenterOffset = ((viewportHeight + headerHeight) / 2) + verticalScreenBias;
+            const targetScrollY = absoluteCharY - visibleCenterOffset;
+            
+            if (Math.abs(window.scrollY - targetScrollY) > 1) {
+                // When riding, we might want to be perfectly sync, so behavior: 'auto' is good.
+                // Or if s.isRiding, force exact scroll to avoid jitter?
+                // The physics loop runs ~60fps, window.scrollTo 'auto' is instant.
+                // This should match the frame.
+                window.scrollTo({ top: targetScrollY, behavior: 'auto' });
+            }
         }
         
         const container = characterRef.current.closest('.hotel-facade');

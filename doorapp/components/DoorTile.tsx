@@ -2,7 +2,7 @@
 
 import { Door } from '@/types/door';
 import Image from 'next/image';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import rough from 'roughjs';
 
 interface DoorTileProps {
@@ -10,7 +10,7 @@ interface DoorTileProps {
   onClick: (door: Door) => void;
 }
 
-export default function DoorTile({ door, onClick }: DoorTileProps) {
+const DoorTile = memo(function DoorTile({ door, onClick }: DoorTileProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const doorbellCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -119,4 +119,6 @@ export default function DoorTile({ door, onClick }: DoorTileProps) {
       </div>
     </div>
   );
-}
+});
+
+export default DoorTile;
