@@ -120,7 +120,7 @@ export default function Home() {
 
         {/* Hotel facade - lift and doors scroll together */}
         {availableFloors.length > 0 ? (
-          <div className="px-8 mb-8">
+          <div className="px-8">
             <div className="hotel-facade rounded-lg overflow-x-auto">
               <div className="flex gap-0 min-w-max">
                 {/* Lift shaft - scrolls with doors */}
@@ -135,7 +135,6 @@ export default function Home() {
                 {/* Door grid - scrolls with lift */}
                 <div className="flex-1">
                   {/* Spacer to match lift shaft header height */}
-                  <div className="bg-white border-b-2 border-black" style={{ height: '70px' }}></div>
                   
                   <div className="flex flex-col-reverse">
                     {availableFloors.map((floor) => (
