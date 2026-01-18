@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
+
 export type DoorView = 'chalk' | 'prettify' | 'uglify' | 'sloppify';
 export type JobStatus = 'idle' | 'queued' | 'extracted' | 'completed' | 'failed';
 
@@ -118,7 +120,7 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
     const poll = async () => {
       try {
         console.log(`🔄 [Polling] Fetching /scans/${scanId} for room ${roomId}...`);
-        const response = await fetch(`https://chalk-pyserver.onrender.com/scans/${scanId}`);
+        const response = await fetch(`${BACKEND_URL}/scans/${scanId}`);
         
         if (!response.ok) {
           console.error(`❌ [Polling] Failed for ${roomId}: ${response.status} ${response.statusText}`);
@@ -210,7 +212,7 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
       formData.append('roomId', roomId);
       // NO image file - backend will return existing data if available
 
-      const response = await fetch('https://chalk-pyserver.onrender.com/extract', {
+      const response = await fetch(`${BACKEND_URL}/extract`, {
         method: 'POST',
         body: formData,
       });
@@ -291,7 +293,7 @@ export function DoorStateProvider({ children }: { children: ReactNode }) {
       }
 
       console.log(`📤 [Extract] Uploading image for room ${roomId}...`);
-      const response = await fetch('https://chalk-pyserver.onrender.com/extract', {
+      const response = await fetch(`${BACKEND_URL}/extract`, {
         method: 'POST',
         body: formData,
       });

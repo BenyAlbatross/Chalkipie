@@ -37,7 +37,8 @@ const DoorTile = memo(function DoorTile({ door, onClick, doorRef }: DoorTileProp
       const formData = new FormData();
       formData.append('image', imageBlob, 'door.jpg');
       
-      const response = await fetch('http://localhost:5001/doorbell', {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
+      const response = await fetch(`${BACKEND_URL}/doorbell`, {
         method: 'POST',
         body: formData,
       });

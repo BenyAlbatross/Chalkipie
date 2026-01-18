@@ -4,6 +4,10 @@ import { Door } from '@/types/door';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import ImageUploader from './ImageUploader';
 import { fetchScanByRoomId } from '@/lib/api';
 
@@ -50,7 +54,8 @@ export default function DoorFocusView({
 
   // Preload styled images when modal opens
   useEffect(() => {
-    const compositeId = door.id.replace('gen-', '');
+    const semesterCode = `${door.academicYear.replace('/', '')}${door.semester}0`;
+    const compositeId = `${semesterCode}-${door.id.replace('gen-', '')}`;
     fetchScanByRoomId(compositeId).then(data => {
       if (data) {
         const newStyleUrls: {pretty?: string, ugly?: string, slop?: string} = {};
@@ -79,7 +84,8 @@ export default function DoorFocusView({
     let intervalId: NodeJS.Timeout;
 
     const checkStatus = async () => {
-      const compositeId = door.id.replace('gen-', '');
+      const semesterCode = `${door.academicYear.replace('/', '')}${door.semester}0`;
+      const compositeId = `${semesterCode}-${door.id.replace('gen-', '')}`;
       try {
         const data = await fetchScanByRoomId(compositeId);
 
@@ -87,13 +93,15 @@ export default function DoorFocusView({
           // Use chalkImage (processed_url) from backend
           const newUrl = data.chalkImage || data.original_url || '';
 
-          // Update style URLs when available
+          // Update style URLs when available - only if they exist
           const newStyleUrls: {pretty?: string, ugly?: string, slop?: string} = {};
           if (data.prettifyImage) newStyleUrls.pretty = data.prettifyImage;
           if (data.uglifyImage) newStyleUrls.ugly = data.uglifyImage;
           if (data.sloppifyText) newStyleUrls.slop = data.sloppifyText;
           
-          setStyleUrls(prev => ({...prev, ...newStyleUrls}));
+          if (Object.keys(newStyleUrls).length > 0) {
+            setStyleUrls(prev => ({...prev, ...newStyleUrls}));
+          }
 
           if (newUrl && (newUrl !== door.imageUrl || data.status !== door.status)) {
             if (onUpdate) {
@@ -106,12 +114,16 @@ export default function DoorFocusView({
           }
         }
       } catch (e) {
-        console.error('Error polling scan status:', e);
+        // Silently ignore 404s for rooms that don't exist yet
+        if (e instanceof Error && !e.message.includes('404')) {
+          console.error('Error polling scan status:', e);
+        }
       }
     };
 
-    // Poll if queued, extracted (processing), or if image is missing, or if viewing a style
-    if (door.status === 'queued' || door.status === 'extracted' || !door.imageUrl || viewingStyle) {
+    // Only poll if the door has an image URL (meaning upload happened)
+    // Poll if queued, extracted (processing), or if viewing a style that needs fetching
+    if (door.imageUrl && (door.status === 'queued' || door.status === 'extracted' || viewingStyle)) {
       intervalId = setInterval(checkStatus, 3000);
       checkStatus(); // Immediate check
     }
@@ -210,9 +222,9 @@ export default function DoorFocusView({
           scale: 0.8,
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="fixed inset-0 z-[70] pointer-events-none flex flex-col items-center justify-center"
+        className="fixed inset-0 z-[70] pointer-events-none flex flex-col items-center justify-center px-8 py-12"
       >
-        <div className="flex flex-col items-center justify-center w-full max-w-2xl">
+        <div className="flex flex-col items-center justify-center w-full max-w-2xl max-h-[calc(100vh-6rem)]">
           <div 
             className="mb-6 px-8 py-3 text-center font-bold text-black bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[-2deg]"
             style={{ 
@@ -227,14 +239,14 @@ export default function DoorFocusView({
           <div 
             className="relative bg-[#fdfbf7] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] pointer-events-auto overflow-hidden transition-all duration-300 border-4 border-black"
             style={{ 
-              width: isUploading ? '550px' : 'min(350px, 85vw)',
-              height: isUploading ? 'auto' : '60vh',
+              width: isUploading ? 'min(550px, 85vw)' : 'min(350px, 85vw)',
+              height: isUploading ? 'auto' : 'min(60vh, calc(100vh - 28rem))',
               minHeight: isUploading ? '400px' : '350px',
-              maxHeight: '60vh',
+              maxHeight: isUploading ? '70vh' : 'min(60vh, calc(100vh - 28rem))',
             }}
           >
             {isUploading ? (
-              <div className="p-8 h-full flex flex-col bg-[#fdfbf7]">
+              <div className="p-8 h-full flex flex-col bg-[#fdfbf7] overflow-y-auto">
                  <div className="flex justify-between items-center mb-6">
                     <h3 className="font-bold text-2xl" style={{ fontFamily: 'var(--font-patrick-hand), cursive' }}>Upload Your Masterpiece</h3>
                     <button onClick={handleCloseUpload} className="text-lg hover:underline font-bold text-red-600">Cancel</button>
@@ -242,7 +254,8 @@ export default function DoorFocusView({
                  <ImageUploader 
                     initialSemester={door.semester} 
                     academicYear={door.academicYear} 
-                    doorId={door.id.replace('gen-', '')} 
+                    doorId={door.id.replace('gen-', '')}
+                    semesterCode={`${door.academicYear.replace('/', '')}${door.semester}0`}
                     onUploadSuccess={handleUploadComplete} 
                  />
               </div>
@@ -250,7 +263,13 @@ export default function DoorFocusView({
               <>
                 <div className="absolute inset-0" style={{ padding: '8px' }}>
                   <div className="relative h-full w-full overflow-hidden border-2 border-dashed border-gray-300 rounded-sm bg-[#fdfbf7]">
-                    {getCurrentImageUrl() ? (
+                    {viewingStyle === 'slop' && styleUrls.slop ? (
+                      <div className="w-full h-full overflow-y-auto p-6 bg-[#fffef8]">
+                        <div className="prose prose-lg max-w-none font-handwritten text-lg leading-relaxed text-gray-800" style={{ fontFamily: 'var(--font-patrick-hand), cursive' }}>
+                          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{styleUrls.slop}</ReactMarkdown>
+                        </div>
+                      </div>
+                    ) : getCurrentImageUrl() ? (
                       <Image
                         src={getCurrentImageUrl()!}
                         alt={`Room ${roomNumber}`}
@@ -314,10 +333,10 @@ export default function DoorFocusView({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15, delay: 0.1 }}
-              className="mt-8 pointer-events-auto"
+              className="mt-6 mb-4 pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="flex gap-4 items-center justify-center flex-wrap">
+            <div className="flex gap-3 items-center justify-center flex-wrap px-4">
               <button
                 onClick={() => setIsUploading(true)}
                 className="px-6 py-2 bg-pastel-yellow border-3 border-black font-bold text-xl text-black hover:scale-[1.05] transition-transform shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"

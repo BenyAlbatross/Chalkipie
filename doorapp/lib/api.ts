@@ -127,10 +127,11 @@ export async function fetchDoorsForTerm(term: AcademicTerm): Promise<Door[]> {
     const scansMap = new Map();
     if (scans) {
       scans.forEach((s: any) => {
-        // Map by roomId (e.g., "17124")
+        // Extract plain room number from composite room_id (e.g., "252610-1102" -> "1102")
         if (s.roomId) {
-          console.log('Scan roomId:', s.roomId, 'chalkImage:', s.chalkImage, 'status:', s.status);
-          scansMap.set(String(s.roomId), s);
+          const plainRoomId = s.roomId.includes('-') ? s.roomId.split('-')[1] : s.roomId;
+          console.log('Scan roomId:', s.roomId, 'plainRoomId:', plainRoomId, 'chalkImage:', s.chalkImage, 'status:', s.status);
+          scansMap.set(String(plainRoomId), s);
         }
       });
     }

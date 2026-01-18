@@ -12,6 +12,7 @@ import {
 } from '@/lib/api';
 import { Door, AcademicTerm } from '@/types/door';
 import FancyPantsGuy from '@/components/FancyPantsGuy';
+import { useDoorState } from '@/contexts/DoorStateContext';
 
 export default function Home() {
   const [availableTerms, setAvailableTerms] = useState<AcademicTerm[]>([]);
@@ -24,6 +25,9 @@ export default function Home() {
   
   // Door element refs for positioning focus view
   const doorElementRefs = useRef<{ [doorId: string]: HTMLButtonElement | null }>({});
+
+  // Subscribe to DoorStateContext for background updates
+  const { doorStates } = useDoorState();
 
   // Fetch terms on mount
   useEffect(() => {
@@ -64,6 +68,34 @@ export default function Home() {
     }
     loadDoors();
   }, [selectedTerm]);
+
+  // Sync DoorStateContext updates to doors state (for background processing)
+  useEffect(() => {
+    if (!selectedTerm || doors.length === 0) return;
+
+    const semesterCode = `${selectedTerm.academicYear.replace('/', '')}${selectedTerm.semester}0`;
+    
+    // Update doors based on DoorStateContext changes
+    setDoors(prevDoors => {
+      let hasChanges = false;
+      const updatedDoors = prevDoors.map(door => {
+        const compositeId = `${semesterCode}-${door.id}`;
+        const doorState = doorStates.get(compositeId);
+        
+        if (doorState && doorState.chalkImage && doorState.chalkImage !== door.imageUrl) {
+          hasChanges = true;
+          return {
+            ...door,
+            imageUrl: doorState.chalkImage,
+            status: doorState.status,
+          };
+        }
+        return door;
+      });
+      
+      return hasChanges ? updatedDoors : prevDoors;
+    });
+  }, [doorStates, selectedTerm, doors.length]);
 
   const availableFloors = useMemo(() => {
     const floors = new Set<number>();

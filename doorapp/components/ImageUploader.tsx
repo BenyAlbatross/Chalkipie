@@ -8,6 +8,7 @@ interface ImageUploaderProps {
   doorId?: string;
   initialSemester?: number;
   academicYear?: string;
+  semesterCode?: string;
   onUploadSuccess?: (chalkImageUrl: string) => void;
 }
 
@@ -15,6 +16,7 @@ export default function ImageUploader({
   doorId = '', 
   initialSemester = 1, 
   academicYear = '25/26',
+  semesterCode,
   onUploadSuccess 
 }: ImageUploaderProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -59,10 +61,13 @@ export default function ImageUploader({
 
     try {
       // Format semester code (e.g., AY 25/26 Sem 1 -> 252610)
-      const semesterCode = formatSemesterCode(academicYear, semester);
+      const finalSemesterCode = semesterCode || formatSemesterCode(academicYear, semester);
+      
+      // Create composite room ID: semester-roomNumber (e.g., "252610-1102")
+      const compositeRoomId = `${finalSemesterCode}-${doorId}`;
       
       // Call the unified /extract endpoint via context
-      await extractDoor(doorId || `upload-${Date.now()}`, selectedImage, semesterCode);
+      await extractDoor(compositeRoomId, selectedImage, finalSemesterCode);
       
       setUploadStatus('success');
       // Note: The actual URL will be in the door state now
@@ -134,8 +139,8 @@ export default function ImageUploader({
               onChange={(e) => setSemester(e.target.value)}
               className="w-full p-2 border-2 border-black rounded-md font-sans"
             >
-              <option value="1">Semester 1</option>
-              <option value="2">Semester 2</option>
+              <option value="1">AY25/26 Semester 1</option>
+              <option value="2">AY25/26 Semester 2</option>
             </select>
           </div>
         </div>
