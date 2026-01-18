@@ -2,7 +2,7 @@
 
 import { Door } from '@/types/door';
 import Image from 'next/image';
-import { memo } from 'react';
+import { memo, useState, useRef } from 'react';
 
 interface DoorTileProps {
   door: Door;
@@ -18,7 +18,55 @@ const SKETCH_SCRATCH = "M10,8 L150,10 M152,15 L154,270 M150,274 L8,272 M5,270 L7
 
 const DoorTile = memo(function DoorTile({ door, onClick, doorRef }: DoorTileProps) {
   const roomNumber = `${String(door.floor).padStart(2, '0')}-${String(door.doorNumber % 1000).padStart(3, '0')}`;
+  const [isRinging, setIsRinging] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const handleDoorbellClick = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening the door modal
+    
+    if (!door.imageUrl || isRinging) return;
+    
+    setIsRinging(true);
+    
+    try {
+      // Fetch the image
+      const imageResponse = await fetch(door.imageUrl);
+      const imageBlob = await imageResponse.blob();
+      
+      // Send to backend
+      const formData = new FormData();
+      formData.append('image', imageBlob, 'door.jpg');
+      
+      const response = await fetch('http://localhost:5001/doorbell', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) throw new Error('Failed to generate doorbell sound');
+      
+      // Get audio blob
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Play the sound
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setIsRinging(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      await audio.play();
+    } catch (error) {
+      console.error('Doorbell error:', error);
+      setIsRinging(false);
+    }
+  };
   return (
     <div className="flex items-end gap-3">
       <div className="flex flex-col items-center">
@@ -85,27 +133,34 @@ const DoorTile = memo(function DoorTile({ door, onClick, doorRef }: DoorTileProp
       
       {/* OPTIMIZED: SVG Doorbell with hand-drawn feel */}
       <div style={{ marginBottom: '120px' }}>
-         <svg width="24" height="24" viewBox="0 0 24 24">
-             {/* Messy circle background */}
-             <circle cx="12" cy="12" r="10" fill="#e0e0e0" opacity="0.6" />
-             <path 
-                d="M12,2 C18,2 22,6 22,12 C22,18 18,22 12,22 C6,22 2,18 2,12 C2,6 6,2 12,2" 
-                fill="none" 
-                stroke="black" 
-                strokeWidth="1.5" 
-                strokeDasharray="2,3"
-                opacity="0.8"
-             />
-             <path 
-                d="M12,4 C16,4 20,8 20,12 C20,16 16,20 12,20 C8,20 4,16 4,12 C4,8 8,4 12,4" 
-                fill="none" 
-                stroke="#555" 
-                strokeWidth="1" 
-                opacity="0.5"
-             />
-             {/* Button */}
-             <circle cx="12" cy="12" r="5" fill="#333" />
-         </svg>
+         <button
+           onClick={handleDoorbellClick}
+           disabled={!door.imageUrl || isRinging}
+           className={`transition-all ${isRinging ? 'animate-pulse' : 'hover:scale-110'} ${!door.imageUrl ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+           title={!door.imageUrl ? 'No image to create doorbell sound' : 'Ring doorbell'}
+         >
+           <svg width="24" height="24" viewBox="0 0 24 24">
+               {/* Messy circle background */}
+               <circle cx="12" cy="12" r="10" fill={isRinging ? "#ffd700" : "#e0e0e0"} opacity="0.6" />
+               <path 
+                  d="M12,2 C18,2 22,6 22,12 C22,18 18,22 12,22 C6,22 2,18 2,12 C2,6 6,2 12,2" 
+                  fill="none" 
+                  stroke="black" 
+                  strokeWidth="1.5" 
+                  strokeDasharray="2,3"
+                  opacity="0.8"
+               />
+               <path 
+                  d="M12,4 C16,4 20,8 20,12 C20,16 16,20 12,20 C8,20 4,16 4,12 C4,8 8,4 12,4" 
+                  fill="none" 
+                  stroke="#555" 
+                  strokeWidth="1" 
+                  opacity="0.5"
+               />
+               {/* Button */}
+               <circle cx="12" cy="12" r="5" fill={isRinging ? "#ff6b6b" : "#333"} />
+           </svg>
+         </button>
       </div>
     </div>
   );
