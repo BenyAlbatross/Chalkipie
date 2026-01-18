@@ -56,12 +56,15 @@ export default function DoorFocusView({
   useEffect(() => {
     const semesterCode = `${door.academicYear.replace('/', '')}${door.semester}0`;
     const compositeId = `${semesterCode}-${door.id.replace('gen-', '')}`;
+    console.log('🎨 Fetching styled images for:', compositeId, 'semester:', door.semester);
     fetchScanByRoomId(compositeId).then(data => {
       if (data) {
+        console.log('🎨 Received data:', data);
         const newStyleUrls: {pretty?: string, ugly?: string, slop?: string} = {};
         if (data.prettifyImage) newStyleUrls.pretty = data.prettifyImage;
         if (data.uglifyImage) newStyleUrls.ugly = data.uglifyImage;
         if (data.sloppifyText) newStyleUrls.slop = data.sloppifyText;
+        console.log('🎨 Style URLs:', newStyleUrls);
         setStyleUrls(newStyleUrls);
         
         // Preload images in background and track when loaded

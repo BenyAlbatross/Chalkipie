@@ -29,7 +29,12 @@ async function fetchScansForSemester(semesterCode: string): Promise<any[]> {
   try {
     const response = await fetch(`${BACKEND_URL}/api/scans/${semesterCode}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
     });
     
     if (!response.ok) {
@@ -52,7 +57,12 @@ export async function fetchScanByRoomId(roomId: string): Promise<any | null> {
   try {
     const response = await fetch(`${BACKEND_URL}/api/scan/${roomId}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
     });
     
     if (!response.ok) {
@@ -73,40 +83,19 @@ export async function fetchScanByRoomId(roomId: string): Promise<any | null> {
 
 export async function fetchAvailableTerms(): Promise<AcademicTerm[]> {
   try {
-    // For now, we'll fetch all known semester codes from backend
-    // This is a simplified approach - fetch scans from multiple common semesters
-    const potentialSemesters = ['252610', '252620', '242510', '242520'];
-    const termsMap = new Map<string, AcademicTerm>();
-
-    for (const semCode of potentialSemesters) {
-      const scans = await fetchScansForSemester(semCode);
-      if (scans.length > 0) {
-        const { academicYear, semester } = parseSemesterCode(semCode);
-        const key = `${academicYear}-${semester}`;
-        if (!termsMap.has(key)) {
-          termsMap.set(key, {
-            academicYear,
-            semester,
-            displayName: `${academicYear} Sem ${semester}`,
-          });
-        }
-      }
-    }
-
-    if (termsMap.size === 0) {
-      return [{
+    // Always return both semesters for AY 25/26
+    return [
+      {
         academicYear: "25/26",
         semester: 1,
         displayName: "25/26 Sem 1"
-      }];
-    }
-
-    return Array.from(termsMap.values()).sort((a, b) => {
-      if (a.academicYear !== b.academicYear) {
-        return b.academicYear.localeCompare(a.academicYear);
+      },
+      {
+        academicYear: "25/26",
+        semester: 2,
+        displayName: "25/26 Sem 2"
       }
-      return b.semester - a.semester;
-    });
+    ];
   } catch (err) {
     console.error('Error fetching available terms:', err);
     return [{
